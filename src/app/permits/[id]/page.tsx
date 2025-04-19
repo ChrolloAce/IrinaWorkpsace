@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import Link from 'next/link';
-import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle, FiFileText, FiMail } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle, FiFileText, FiMail, FiDownload } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
 import { formatDate } from '@/lib/utils';
 import PermitChecklist from '@/components/permits/PermitChecklist';
@@ -50,6 +50,9 @@ export default function PermitDetailPage() {
   const progress = permitChecklists.length > 0
     ? Math.round((permitChecklists.filter(item => item.completed).length / permitChecklists.length) * 100)
     : 0;
+  
+  // State for invoice preview iframe
+  const [invoicePreviewUrl, setInvoicePreviewUrl] = useState<string | null>(null);
   
   if (!permit) {
     return (
@@ -145,6 +148,10 @@ export default function PermitDetailPage() {
         setGeneratedPdfId(result.pdfId || null);
         setDownloadUrl(result.downloadUrl || null);
         setDownloadData(result.pdfData || null);
+        
+        // Set the preview URL using the base64 data
+        setInvoicePreviewUrl(result.pdfData || null);
+        
         setError(null);
       } else {
         throw new Error(result.error || 'Failed to generate invoice');
@@ -530,107 +537,72 @@ export default function PermitDetailPage() {
         {/* Invoice Modal */}
         {showInvoiceModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
-              <h3 className="text-xl font-medium mb-4">Invoice Preview</h3>
-              <div className="mb-6">
-                <div className="border-b pb-4 mb-4">
-                  <div className="flex justify-between mb-2">
-                    <div>
-                      <h4 className="font-semibold text-lg">Permit Management System</h4>
-                      <p className="text-gray-500 text-sm">Invoice #{permitId.substring(0, 8).toUpperCase()}</p>
-                      <p className="text-gray-500 text-sm">Date: {new Date().toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <h4 className="font-semibold">Billed To:</h4>
-                      <p>{client?.name}</p>
-                      <p className="text-sm text-gray-500">{client?.email}</p>
-                      <p className="text-sm text-gray-500">{client?.address}, {client?.city}, {client?.state} {client?.zipCode}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <h4 className="font-semibold mb-2">Permit: {permit.title}</h4>
-                  <p className="text-gray-500 text-sm mb-2">Permit Number: {permit.permitNumber}</p>
-                  
-                  <table className="w-full mb-4">
-                    <thead className="bg-gray-50 text-left">
-                      <tr>
-                        <th className="py-2 px-4 text-sm">Description</th>
-                        <th className="py-2 px-4 text-sm">Status</th>
-                        <th className="py-2 px-4 text-sm text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {permitChecklists.map(item => (
-                        <tr key={item.id} className="text-sm">
-                          <td className="py-3 px-4">{item.title}</td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                              item.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {item.completed ? 'Completed' : 'In Progress'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right">${(item.price || 0).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-gray-50 font-medium">
-                      <tr>
-                        <td className="py-3 px-4" colSpan={2}>Total Amount</td>
-                        <td className="py-3 px-4 text-right">${totalCost.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 px-4" colSpan={2}>Completed Work</td>
-                        <td className="py-3 px-4 text-right">${completedCost.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 px-4" colSpan={2}>Balance Due</td>
-                        <td className="py-3 px-4 text-right font-bold">${(totalCost - completedCost).toFixed(2)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                  
-                  <div className="bg-gray-50 p-4 rounded text-sm">
-                    <p className="font-medium mb-1">Notes:</p>
-                    <p>This is just a preview. The generated PDF will include all the details shown here.</p>
-                    <p>Payment due within 30 days. Thank you for your business!</p>
-                  </div>
-                </div>
+            <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-medium">Invoice Preview</h3>
+                <button 
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <FiX size={24} />
+                </button>
               </div>
               
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowInvoiceModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
-                >
-                  Cancel
-                </button>
-                {!invoiceGenerated ? (
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center">
+                  <FiAlertCircle className="mr-2" />
+                  {error}
+                </div>
+              )}
+              
+              {!invoiceGenerated ? (
+                <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                  <div className="text-center mb-4">
+                    <h4 className="text-lg font-medium mb-2">Generate Professional Invoice</h4>
+                    <p className="text-gray-500">
+                      Create a professional invoice for {client?.name} for permit {permit.permitNumber}.
+                    </p>
+                  </div>
                   <button
                     onClick={handleGenerateInvoice}
-                    className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center"
+                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center text-lg"
                   >
-                    <FiFileText className="mr-2" /> Generate PDF
+                    <FiFileText className="mr-2" /> Generate Invoice
                   </button>
-                ) : (
-                  <div className="flex space-x-2">
+                </div>
+              ) : (
+                <div className="flex flex-col flex-grow overflow-hidden">
+                  {/* Invoice Preview */}
+                  <div className="flex-grow overflow-hidden mb-4 border rounded-lg">
+                    {invoicePreviewUrl ? (
+                      <iframe 
+                        src={invoicePreviewUrl} 
+                        className="w-full h-full" 
+                        title="Invoice Preview"
+                      ></iframe>
+                    ) : (
+                      <div className="flex items-center justify-center h-full bg-gray-100 text-gray-500">
+                        Loading preview...
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-end space-x-3">
                     <button
                       onClick={handleDownloadInvoice}
-                      className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center"
                     >
-                      <FiFileText className="mr-2" /> Download PDF
+                      <FiDownload className="mr-2" /> Download PDF
                     </button>
                     <button
                       onClick={handleSendInvoice}
-                      className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center"
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center"
                     >
                       <FiMail className="mr-2" /> Send via Email
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Client, Permit, ChecklistItem, PermitStatus } from './types';
-import { sampleClients, samplePermits, sampleChecklistItems, generatePermitNumber } from './data';
+import { Client, Permit, ChecklistItem, PermitStatus, ClientBranch } from './types';
+import { sampleClients, samplePermits, sampleChecklistItems, generatePermitNumber, sampleClientBranches } from './data';
 import { generateId, getTodayFormatted, calculateProgress } from './utils';
 
 // Define the context shape
@@ -11,6 +11,7 @@ interface AppContextType {
   clients: Client[];
   permits: Permit[];
   checklistItems: ChecklistItem[];
+  clientBranches: ClientBranch[];
   
   // Client operations
   addClient: (client: Omit<Client, 'id' | 'createdAt'>) => string;
@@ -18,6 +19,13 @@ interface AppContextType {
   deleteClient: (id: string) => void;
   getClientById: (id: string) => Client | undefined;
   getClientPermits: (clientId: string) => Permit[];
+  
+  // Client branch operations
+  addClientBranch: (branch: Omit<ClientBranch, 'id' | 'createdAt'>) => string;
+  updateClientBranch: (id: string, branchData: Partial<ClientBranch>) => void;
+  deleteClientBranch: (id: string) => void;
+  getClientBranches: (clientId: string) => ClientBranch[];
+  getClientBranchById: (id: string) => ClientBranch | undefined;
   
   // Permit operations
   addPermit: (permit: Omit<Permit, 'id' | 'createdAt' | 'progress' | 'permitNumber'>) => string;
@@ -64,14 +72,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return sampleChecklistItems;
   });
 
+  const [clientBranches, setClientBranches] = useState<ClientBranch[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedBranches = localStorage.getItem('clientBranches');
+      return storedBranches ? JSON.parse(storedBranches) : sampleClientBranches;
+    }
+    return sampleClientBranches;
+  });
+
   // Save data to localStorage when it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('clients', JSON.stringify(clients));
       localStorage.setItem('permits', JSON.stringify(permits));
       localStorage.setItem('checklistItems', JSON.stringify(checklistItems));
+      localStorage.setItem('clientBranches', JSON.stringify(clientBranches));
     }
-  }, [clients, permits, checklistItems]);
+  }, [clients, permits, checklistItems, clientBranches]);
 
   // Client operations
   const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>) => {
@@ -100,6 +117,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error("Cannot delete client with associated permits");
     }
     
+    // Also delete any client branches
+    setClientBranches(prevBranches => 
+      prevBranches.filter(branch => branch.clientId !== id)
+    );
+    
     setClients(prevClients => prevClients.filter(client => client.id !== id));
   };
 
@@ -109,6 +131,82 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getClientPermits = (clientId: string) => {
     return permits.filter(permit => permit.clientId === clientId);
+  };
+
+  // Client branch operations
+  const addClientBranch = (branchData: Omit<ClientBranch, 'id' | 'createdAt'>) => {
+    const id = generateId();
+    const newBranch: ClientBranch = {
+      ...branchData,
+      id,
+      createdAt: getTodayFormatted(),
+    };
+    
+    // If this is set as main location, update other branches for this client
+    if (branchData.isMainLocation) {
+      setClientBranches(prevBranches =>
+        prevBranches.map(branch =>
+          branch.clientId === branchData.clientId 
+            ? { ...branch, isMainLocation: false } 
+            : branch
+        )
+      );
+    }
+    
+    setClientBranches(prevBranches => [...prevBranches, newBranch]);
+    return id;
+  };
+
+  const updateClientBranch = (id: string, branchData: Partial<ClientBranch>) => {
+    let clientId = '';
+    
+    // If updating isMainLocation to true, set other branches to false
+    if (branchData.isMainLocation) {
+      const branch = clientBranches.find(b => b.id === id);
+      if (branch) {
+        clientId = branch.clientId;
+        setClientBranches(prevBranches =>
+          prevBranches.map(b =>
+            b.clientId === clientId && b.id !== id
+              ? { ...b, isMainLocation: false }
+              : b
+          )
+        );
+      }
+    }
+    
+    setClientBranches(prevBranches =>
+      prevBranches.map(branch =>
+        branch.id === id ? { ...branch, ...branchData } : branch
+      )
+    );
+  };
+
+  const deleteClientBranch = (id: string) => {
+    const branch = clientBranches.find(b => b.id === id);
+    
+    // Don't allow deleting the main location if it's the only branch
+    if (branch && branch.isMainLocation) {
+      const clientBranchCount = clientBranches.filter(
+        b => b.clientId === branch.clientId
+      ).length;
+      
+      if (clientBranchCount === 1) {
+        throw new Error("Cannot delete the only branch location for this client");
+      }
+    }
+    
+    setClientBranches(prevBranches => 
+      prevBranches.filter(branch => branch.id !== id)
+    );
+  };
+
+  const getClientBranches = (clientId: string) => {
+    return clientBranches.filter(branch => branch.clientId === clientId);
+  };
+
+  const getClientBranchById = (id: string) => {
+    return clientBranches.find(branch => branch.id === id);
   };
 
   // Permit operations
@@ -239,6 +337,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         clients,
         permits,
         checklistItems,
+        clientBranches,
         
         // Client operations
         addClient,
@@ -246,6 +345,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteClient,
         getClientById,
         getClientPermits,
+        
+        // Client branch operations
+        addClientBranch,
+        updateClientBranch,
+        deleteClientBranch,
+        getClientBranches,
+        getClientBranchById,
         
         // Permit operations
         addPermit,

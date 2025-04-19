@@ -1,3 +1,19 @@
+// Client branch/location type
+export type ClientBranch = {
+  id: string;
+  clientId: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  isMainLocation: boolean;
+  createdAt: string;
+};
+
 // Client type definition
 export type Client = {
   id: string;
@@ -11,6 +27,7 @@ export type Client = {
   zipCode: string;
   notes?: string;
   createdAt: string;
+  branches?: ClientBranch[];
 };
 
 // Permit status type

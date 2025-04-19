@@ -33,7 +33,7 @@ export default function PermitDetailPage() {
   const [newItemText, setNewItemText] = useState('');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
-  const [generatedFileName, setGeneratedFileName] = useState<string | null>(null);
+  const [generatedPdfId, setGeneratedPdfId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     title: permit?.title || '',
@@ -141,7 +141,7 @@ export default function PermitDetailPage() {
       
       if (result.success) {
         setInvoiceGenerated(true);
-        setGeneratedFileName(result.fileName || null);
+        setGeneratedPdfId(result.pdfId || null);
         setDownloadUrl(result.downloadUrl || null);
         setError(null);
       } else {
@@ -170,7 +170,7 @@ export default function PermitDetailPage() {
         throw new Error('Client email is required to send the invoice');
       }
       
-      if (!generatedFileName) {
+      if (!generatedPdfId) {
         throw new Error('Invoice must be generated before sending');
       }
       
@@ -195,7 +195,7 @@ export default function PermitDetailPage() {
         subject, 
         text, 
         html, 
-        generatedFileName
+        generatedPdfId
       );
       
       if (result.success) {
@@ -206,7 +206,7 @@ export default function PermitDetailPage() {
         setTimeout(() => {
           setShowInvoiceModal(false);
           setInvoiceGenerated(false);
-          setGeneratedFileName(null);
+          setGeneratedPdfId(null);
           setError(null);
         }, 2000);
       } else {

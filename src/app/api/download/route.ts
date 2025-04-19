@@ -1,36 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+
+// Define the cache structure in global scope
+declare global {
+  var __PDF_CACHE: {
+    [key: string]: {
+      fileName: string;
+      contentType: string;
+      data: string;
+      createdAt: string;
+    }
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the filename from the URL
+    // Get the PDF ID from the URL
     const url = new URL(request.url);
-    const fileName = url.searchParams.get('file');
+    const pdfId = url.searchParams.get('id');
     
-    if (!fileName) {
-      return new NextResponse('File name is required', { status: 400 });
+    if (!pdfId) {
+      return new NextResponse('PDF ID is required', { status: 400 });
     }
     
-    // Construct the file path
-    const filePath = path.join(process.cwd(), 'temp', fileName);
-    
-    // Check if the file exists
-    if (!fs.existsSync(filePath)) {
-      console.error(`File not found: ${filePath}`);
-      return new NextResponse('File not found', { status: 404 });
+    // Check if the PDF exists in our cache
+    if (!global.__PDF_CACHE || !global.__PDF_CACHE[pdfId]) {
+      console.error(`PDF not found in cache: ${pdfId}`);
+      return new NextResponse('PDF not found or expired', { status: 404 });
     }
     
-    // Read the file
-    const fileBuffer = fs.readFileSync(filePath);
+    const pdfData = global.__PDF_CACHE[pdfId];
+    
+    // Extract the binary data from the data URI
+    const base64Data = pdfData.data.split('base64,')[1];
+    const binaryData = Buffer.from(base64Data, 'base64');
     
     // Set the appropriate headers
     const headers = new Headers();
-    headers.set('Content-Type', 'application/pdf');
-    headers.set('Content-Disposition', `attachment; filename="${fileName}"`);
+    headers.set('Content-Type', pdfData.contentType);
+    headers.set('Content-Disposition', `attachment; filename="${pdfData.fileName}"`);
     
     // Return the file
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(binaryData, {
       status: 200,
       headers,
     });

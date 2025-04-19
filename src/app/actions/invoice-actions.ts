@@ -2,8 +2,18 @@
 
 import { generatePdfInvoice, sendInvoiceEmail, createInvoiceData } from '@/lib/invoice-utils';
 import { ChecklistItem, Client, Permit } from '@/lib/types';
-import fs from 'fs';
-import path from 'path';
+
+// Define the cache structure
+declare global {
+  var __PDF_CACHE: {
+    [key: string]: {
+      fileName: string;
+      contentType: string;
+      data: string;
+      createdAt: string;
+    }
+  };
+}
 
 /**
  * Server action to generate an invoice PDF
@@ -21,29 +31,49 @@ export async function generateInvoiceAction(
     
     // Generate PDF with the invoice data
     const fileName = `invoice-${permit.id.substring(0, 8)}.pdf`;
-    const tempDir = path.join(process.cwd(), 'temp');
     
-    // Create temp directory if it doesn't exist
-    if (!fs.existsSync(tempDir)) {
-      console.log("Creating temporary directory:", tempDir);
-      fs.mkdirSync(tempDir, { recursive: true });
+    // Generate the PDF in memory
+    const pdfData = await generatePdfInvoice(invoiceData, fileName);
+    
+    // Generate a unique ID for this PDF
+    const pdfId = `pdf_${Date.now()}_${permit.id.substring(0, 8)}`;
+    
+    // Store PDF data temporarily (can be accessed via API route)
+    try {
+      // Using URL since we can't use the filesystem
+      const downloadUrl = `/api/download?id=${pdfId}`;
+      
+      // Store PDF in a global variable for short-term access from API route
+      global.__PDF_CACHE = global.__PDF_CACHE || {};
+      global.__PDF_CACHE[pdfId] = {
+        fileName,
+        contentType: 'application/pdf',
+        data: pdfData.base64,
+        createdAt: new Date().toISOString()
+      };
+      
+      // Clean up old PDFs (keeping only last 10)
+      const pdfIds = Object.keys(global.__PDF_CACHE);
+      if (pdfIds.length > 10) {
+        const oldestIds = pdfIds
+          .sort((a, b) => global.__PDF_CACHE[a].createdAt.localeCompare(global.__PDF_CACHE[b].createdAt))
+          .slice(0, pdfIds.length - 10);
+        
+        oldestIds.forEach(id => {
+          delete global.__PDF_CACHE[id];
+        });
+      }
+      
+      return { 
+        success: true, 
+        fileName,
+        pdfId,
+        downloadUrl
+      };
+    } catch (err) {
+      console.error("Error storing PDF data:", err);
+      throw err;
     }
-    
-    const filePath = path.join(tempDir, fileName);
-    console.log("Generating PDF at path:", filePath);
-    
-    // Generate the PDF
-    await generatePdfInvoice(invoiceData, filePath);
-    
-    // Create a download URL for the client
-    const downloadUrl = `/api/download?file=${fileName}`;
-    
-    return { 
-      success: true, 
-      fileName, 
-      filePath,
-      downloadUrl
-    };
   } catch (error) {
     console.error('Error generating invoice:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -58,7 +88,7 @@ export async function sendInvoiceEmailAction(
   subject: string,
   text: string,
   html: string,
-  pdfPath: string
+  pdfId: string
 ) {
   try {
     // Log debug information
@@ -68,16 +98,22 @@ export async function sendInvoiceEmailAction(
       User: ${process.env.SMTP_USER}
     `);
     
-    // Get the full path to the PDF
-    const fullPath = path.join(process.cwd(), 'temp', pdfPath);
-    console.log(`Looking for PDF at: ${fullPath}`);
-    
-    if (!fs.existsSync(fullPath)) {
-      console.error(`PDF file not found at ${fullPath}`);
-      return { success: false, error: 'PDF file not found' };
+    // Get the PDF data from cache
+    if (!global.__PDF_CACHE || !global.__PDF_CACHE[pdfId]) {
+      console.error(`PDF not found in cache: ${pdfId}`);
+      return { success: false, error: 'PDF not found or expired' };
     }
     
-    const result = await sendInvoiceEmail(clientEmail, subject, text, html, fullPath);
+    const pdfData = global.__PDF_CACHE[pdfId];
+    
+    // Create a temporary data URI for nodemailer
+    const attachment = {
+      filename: pdfData.fileName,
+      content: pdfData.data.split('base64,')[1],
+      encoding: 'base64'
+    };
+    
+    const result = await sendInvoiceEmail(clientEmail, subject, text, html, attachment);
     return { success: true, result };
   } catch (error) {
     console.error('Error sending invoice email:', error);

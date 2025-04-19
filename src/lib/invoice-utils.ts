@@ -16,7 +16,7 @@ import fs from 'fs';
 export async function generatePdfInvoice(
   invoiceData: ReturnType<typeof createInvoiceData>,
   fileName: string
-): Promise<string> {
+): Promise<{ buffer: ArrayBuffer; base64: string }> {
   try {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
@@ -137,9 +137,14 @@ export async function generatePdfInvoice(
     doc.setFont('helvetica', 'normal');
     doc.text('Payment due within 30 days. Thank you for your business!', 20, startY + 7);
     
-    // Save the PDF
-    doc.save(fileName);
-    return fileName;
+    // Get PDF as buffer and base64
+    const pdfOutput = doc.output('arraybuffer');
+    const base64 = doc.output('datauristring');
+    
+    return { 
+      buffer: pdfOutput,
+      base64: base64
+    };
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw error;
@@ -178,7 +183,7 @@ export function createInvoiceData(
  * @param subject - Email subject
  * @param text - Email plain text
  * @param html - Email HTML content
- * @param pdfPath - Path to the PDF attachment
+ * @param attachment - Either a path to the PDF file or an attachment object
  * @returns Promise with the email send result
  */
 export async function sendInvoiceEmail(
@@ -186,11 +191,9 @@ export async function sendInvoiceEmail(
   subject: string,
   text: string,
   html: string,
-  pdfPath: string
+  attachment: string | { filename: string; content: string; encoding: string }
 ): Promise<any> {
   console.log(`Sending email to ${to} with subject: ${subject}`);
-  console.log(`Attaching PDF: ${pdfPath}`);
-  console.log(`SMTP Host: ${process.env.SMTP_HOST}`);
   
   // Double-check that we're using the correct SMTP host
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com'; // Default to gmail if not set
@@ -206,18 +209,26 @@ export async function sendInvoiceEmail(
     },
   });
 
+  // Prepare attachment
+  let attachmentConfig;
+  if (typeof attachment === 'string') {
+    // It's a file path
+    attachmentConfig = {
+      filename: attachment.split('/').pop(),
+      path: attachment,
+    };
+  } else {
+    // It's already an attachment object
+    attachmentConfig = attachment;
+  }
+
   const info = await transporter.sendMail({
     from: process.env.EMAIL_FROM,
     to,
     subject,
     text,
     html,
-    attachments: [
-      {
-        filename: pdfPath.split('/').pop(),
-        path: pdfPath,
-      },
-    ],
+    attachments: [attachmentConfig],
   });
 
   return info;

@@ -8,7 +8,7 @@ import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle
 import { useAppContext } from '@/lib/context';
 import { formatDate } from '@/lib/utils';
 import PermitChecklist from '@/components/permits/PermitChecklist';
-import { generatePdfInvoice, sendInvoiceEmail, createInvoiceData } from '@/lib/invoice-utils';
+import { generateInvoiceAction, sendInvoiceEmailAction } from '@/app/actions/invoice-actions';
 
 export default function PermitDetailPage() {
   const params = useParams();
@@ -33,6 +33,7 @@ export default function PermitDetailPage() {
   const [newItemText, setNewItemText] = useState('');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
+  const [generatedFileName, setGeneratedFileName] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     title: permit?.title || '',
     permitType: permit?.permitType || '',
@@ -128,22 +129,26 @@ export default function PermitDetailPage() {
   // Generate invoice
   const handleGenerateInvoice = async () => {
     try {
-      setInvoiceGenerated(true);
-      
       if (!client) {
         throw new Error('Client information is required for invoice generation');
       }
       
-      // Create invoice data
-      const invoiceData = createInvoiceData(permit, client, permitChecklists);
+      setError('Generating invoice, please wait...');
       
-      // Generate PDF with the invoice data
-      const fileName = `invoice-${permitId.substring(0, 8)}.pdf`;
-      await generatePdfInvoice(invoiceData, fileName);
+      // Call the server action to generate the invoice
+      const result = await generateInvoiceAction(permit, client, permitChecklists);
       
-    } catch (error) {
+      if (result.success) {
+        setInvoiceGenerated(true);
+        setGeneratedFileName(result.fileName || null);
+        setError(null);
+      } else {
+        throw new Error(result.error || 'Failed to generate invoice');
+      }
+      
+    } catch (error: any) {
       console.error('Error generating invoice:', error);
-      setError('Failed to generate invoice. Please try again.');
+      setError(error.message || 'Failed to generate invoice. Please try again.');
     }
   };
   
@@ -154,10 +159,12 @@ export default function PermitDetailPage() {
         throw new Error('Client email is required to send the invoice');
       }
       
+      if (!generatedFileName) {
+        throw new Error('Invoice must be generated before sending');
+      }
+      
       // Show loading indicator
-      setError(null);
-      const loadingMessage = 'Sending email, please wait...';
-      setError(loadingMessage);
+      setError('Sending email, please wait...');
       
       // Generate email content
       const subject = `Invoice for ${permit.title} - ${permit.permitNumber}`;
@@ -171,24 +178,33 @@ export default function PermitDetailPage() {
         <p>Thank you for your business!</p>
       `;
       
-      // Send the email
-      const pdfPath = `invoice-${permitId.substring(0, 8)}.pdf`;
-      const result = await sendInvoiceEmail(client.email, subject, text, html, pdfPath);
+      // Call the server action to send the email
+      const result = await sendInvoiceEmailAction(
+        client.email, 
+        subject, 
+        text, 
+        html, 
+        generatedFileName
+      );
       
-      // Show success message
-      console.log('Email sent successfully:', result);
-      setError('Email sent successfully!');
-      
-      // Close modal after 2 seconds
-      setTimeout(() => {
-        setShowInvoiceModal(false);
-        setInvoiceGenerated(false);
-        setError(null);
-      }, 2000);
+      if (result.success) {
+        // Show success message
+        setError('Email sent successfully!');
+        
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          setShowInvoiceModal(false);
+          setInvoiceGenerated(false);
+          setGeneratedFileName(null);
+          setError(null);
+        }, 2000);
+      } else {
+        throw new Error(result.error || 'Failed to send email');
+      }
       
     } catch (error: any) {
       console.error('Error sending invoice email:', error);
-      setError(`Failed to send invoice email: ${error.message || 'Unknown error'}`);
+      setError(error.message || 'Failed to send invoice email');
     }
   };
   

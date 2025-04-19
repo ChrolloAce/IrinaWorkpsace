@@ -1,6 +1,11 @@
 import jsPDF from 'jspdf';
 import nodemailer from 'nodemailer';
 import { ChecklistItem, Client, Permit } from './types';
+import 'server-only';
+
+// Server-side only imports
+import path from 'path';
+import fs from 'fs';
 
 /**
  * Generates a PDF invoice directly using jsPDF
@@ -13,121 +18,124 @@ export async function generatePdfInvoice(
   fileName: string
 ): Promise<string> {
   try {
-    // Create a new PDF document
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
     
-    // Set initial position and line height
-    let y = 20;
-    const lineHeight = 7;
-    const margin = 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const contentWidth = pageWidth - 2 * margin;
+    // Add logo
+    try {
+      const logoPath = path.join(process.cwd(), 'unnamed.jpg');
+      const logoDataUrl = await getLogoDataUrl(logoPath);
+      doc.addImage(logoDataUrl, 'JPEG', 15, 10, 30, 30);
+    } catch (error) {
+      console.error('Error adding logo:', error);
+    }
     
-    // Add company header
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Permit Management System', margin, y);
-    y += lineHeight * 1.5;
-    
-    // Add invoice info
+    // Add company info header
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Invoice #: ${invoiceData.id}`, margin, y);
-    y += lineHeight;
-    doc.text(`Date: ${invoiceData.date}`, margin, y);
-    y += lineHeight;
-    doc.text(`Due Date: ${invoiceData.dueDate}`, margin, y);
-    y += lineHeight * 1.5;
-    
-    // Add client info
     doc.setFont('helvetica', 'bold');
-    doc.text('Billed To:', margin, y);
-    y += lineHeight;
+    doc.text('Irina Perez', 50, 15);
+    doc.text('IRH Smart LLC', 50, 22);
     doc.setFont('helvetica', 'normal');
-    doc.text(invoiceData.client.name, margin, y);
-    y += lineHeight;
-    if (invoiceData.client.email) {
-      doc.text(invoiceData.client.email, margin, y);
-      y += lineHeight;
-    }
-    if (invoiceData.client.address) {
-      doc.text(`${invoiceData.client.address}, ${invoiceData.client.city}, ${invoiceData.client.state} ${invoiceData.client.zipCode}`, margin, y);
-      y += lineHeight;
-    }
-    y += lineHeight;
+    doc.setFontSize(10);
+    doc.text('Permit Expediter', 50, 29);
+    doc.text('Phone: (305) 859-1549', 50, 36);
+    doc.text('Direct: (786) 208-6889', 50, 43);
+    doc.text('Email: irina@irhsmart.com', 50, 50);
     
-    // Add permit info
+    // Add invoice title
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Permit: ${invoiceData.permit.title}`, margin, y);
-    y += lineHeight;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Permit Number: ${invoiceData.permit.permitNumber}`, margin, y);
-    y += lineHeight;
-    doc.text(`Location: ${invoiceData.permit.location}`, margin, y);
-    y += lineHeight * 1.5;
+    doc.text('INVOICE', pageWidth - 15, 30, { align: 'right' });
     
-    // Add table header
+    // Add invoice details
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Invoice #: ${invoiceData.id}`, pageWidth - 15, 40, { align: 'right' });
+    doc.text(`Date: ${invoiceData.date}`, pageWidth - 15, 47, { align: 'right' });
+    doc.text(`Due Date: ${invoiceData.dueDate}`, pageWidth - 15, 54, { align: 'right' });
+    
+    // Add client info box
+    doc.setDrawColor(200, 200, 200);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(15, 60, pageWidth - 30, 40, 3, 3, 'FD');
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Bill To:', 20, 70);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`${invoiceData.client.name}`, 20, 78);
+    doc.text(`${invoiceData.client.address}`, 20, 85);
+    doc.text(`${invoiceData.client.email}`, 20, 92);
+    
+    // Add permit details
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Permit Details:', pageWidth - 90, 70);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Permit #: ${invoiceData.permit.permitNumber}`, pageWidth - 90, 78);
+    doc.text(`Project: ${invoiceData.permit.title}`, pageWidth - 90, 85);
+    doc.text(`Location: ${invoiceData.permit.location}`, pageWidth - 90, 92);
+    
+    // Add table headers
+    let startY = 110;
     doc.setFillColor(240, 240, 240);
-    doc.rect(margin, y, contentWidth, lineHeight, 'F');
+    doc.rect(15, startY, pageWidth - 30, 10, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.text('Description', margin + 2, y + lineHeight - 2);
-    doc.text('Status', margin + contentWidth * 0.6, y + lineHeight - 2);
-    doc.text('Amount', margin + contentWidth * 0.85, y + lineHeight - 2);
-    y += lineHeight;
+    doc.text('Description', 20, startY + 7);
+    doc.text('Status', 120, startY + 7);
+    doc.text('Amount', pageWidth - 25, startY + 7, { align: 'right' });
     
     // Add table rows
     doc.setFont('helvetica', 'normal');
     
     invoiceData.items.forEach((item, index) => {
       // Add new page if needed
-      if (y > doc.internal.pageSize.getHeight() - 40) {
+      if (startY > doc.internal.pageSize.getHeight() - 40) {
         doc.addPage();
-        y = 20;
+        startY = 20;
       }
       
       // Alternate row background for better readability
       if (index % 2 === 0) {
         doc.setFillColor(248, 248, 248);
-        doc.rect(margin, y, contentWidth, lineHeight, 'F');
+        doc.rect(15, startY, pageWidth - 30, 10, 'F');
       }
       
       // Add item data
-      doc.text(item.title, margin + 2, y + lineHeight - 2);
-      doc.text(item.completed ? 'Completed' : 'In Progress', margin + contentWidth * 0.6, y + lineHeight - 2);
-      doc.text(`$${(item.price || 0).toFixed(2)}`, margin + contentWidth * 0.85, y + lineHeight - 2);
-      y += lineHeight;
+      doc.text(item.title, 20, startY + 7);
+      doc.text(item.completed ? 'Completed' : 'In Progress', 120, startY + 7);
+      doc.text(`$${(item.price || 0).toFixed(2)}`, pageWidth - 25, startY + 7, { align: 'right' });
+      startY += 10;
     });
     
     // Add table footer with totals
-    y += lineHeight / 2;
-    doc.line(margin, y, margin + contentWidth, y);
-    y += lineHeight;
+    startY += 5;
+    doc.line(15, startY, pageWidth - 25, startY);
+    startY += 5;
     
     doc.setFont('helvetica', 'bold');
-    doc.text('Total Amount:', margin + contentWidth * 0.6, y);
-    doc.text(`$${invoiceData.totalCost.toFixed(2)}`, margin + contentWidth * 0.85, y);
-    y += lineHeight;
+    doc.text('Total Amount:', 120, startY);
+    doc.text(`$${invoiceData.totalCost.toFixed(2)}`, pageWidth - 25, startY, { align: 'right' });
+    startY += 5;
     
-    doc.text('Completed Work:', margin + contentWidth * 0.6, y);
-    doc.text(`$${invoiceData.completedCost.toFixed(2)}`, margin + contentWidth * 0.85, y);
-    y += lineHeight;
+    doc.text('Completed Work:', 120, startY);
+    doc.text(`$${invoiceData.completedCost.toFixed(2)}`, pageWidth - 25, startY, { align: 'right' });
+    startY += 5;
     
     doc.setFillColor(230, 230, 250);
-    doc.rect(margin + contentWidth * 0.6 - 2, y - lineHeight + 2, contentWidth * 0.4, lineHeight, 'F');
-    doc.text('Balance Due:', margin + contentWidth * 0.6, y);
-    doc.text(`$${invoiceData.balanceDue.toFixed(2)}`, margin + contentWidth * 0.85, y);
-    y += lineHeight * 2;
+    doc.rect(120, startY - 5, pageWidth - 25 - 120, 5, 'F');
+    doc.text('Balance Due:', 120, startY);
+    doc.text(`$${invoiceData.balanceDue.toFixed(2)}`, pageWidth - 25, startY, { align: 'right' });
+    startY += 5;
     
     // Add notes
     doc.setFillColor(240, 240, 240);
-    doc.rect(margin, y, contentWidth, lineHeight * 4, 'F');
-    doc.text('Notes:', margin + 2, y + lineHeight - 2);
+    doc.rect(15, startY, pageWidth - 30, 10, 'F');
+    doc.text('Notes:', 20, startY + 5);
     doc.setFont('helvetica', 'normal');
-    doc.text('Payment due within 30 days. Thank you for your business!', margin + 2, y + lineHeight * 2 - 2);
+    doc.text('Payment due within 30 days. Thank you for your business!', 20, startY + 7);
     
     // Save the PDF
     doc.save(fileName);
@@ -209,4 +217,18 @@ export async function sendInvoiceEmail(
   });
 
   return info;
+}
+
+// Helper function to get logo as data URL
+async function getLogoDataUrl(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      const base64 = data.toString('base64');
+      resolve(`data:image/jpeg;base64,${base64}`);
+    });
+  });
 } 

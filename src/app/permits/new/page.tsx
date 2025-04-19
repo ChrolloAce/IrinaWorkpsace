@@ -1,11 +1,143 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import Link from 'next/link';
-import { FiArrowLeft, FiSave, FiPlus } from 'react-icons/fi';
+import { FiArrowLeft, FiSave, FiPlus, FiTrash, FiAlertCircle } from 'react-icons/fi';
+import { useAppContext } from '@/lib/context';
+import { PermitStatus } from '@/lib/types';
+
+type FormState = {
+  title: string;
+  clientId: string;
+  permitType: string;
+  status: PermitStatus;
+  location: string;
+  description: string;
+  assignedTo: string;
+  expiresAt: string;
+  checklistItems: string[];
+};
 
 export default function NewPermitPage() {
+  const router = useRouter();
+  const { clients, addPermit, addChecklistItem } = useAppContext();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Default expiration date (12 months from today)
+  const getDefaultExpirationDate = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 12);
+    return date.toISOString().split('T')[0];
+  };
+  
+  // Form state
+  const [formState, setFormState] = useState<FormState>({
+    title: '',
+    clientId: '',
+    permitType: '',
+    status: 'draft',
+    location: '',
+    description: '',
+    assignedTo: '',
+    expiresAt: getDefaultExpirationDate(),
+    checklistItems: [
+      'Application form completed',
+      'Payment processed',
+      'Site plans submitted',
+    ],
+  });
+  
+  // New checklist item input
+  const [newChecklistItem, setNewChecklistItem] = useState('');
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  // Handle adding a new checklist item
+  const handleAddChecklistItem = () => {
+    if (!newChecklistItem.trim()) return;
+    
+    setFormState(prev => ({
+      ...prev,
+      checklistItems: [...prev.checklistItems, newChecklistItem.trim()]
+    }));
+    
+    setNewChecklistItem('');
+  };
+  
+  // Handle checklist item deletion
+  const handleDeleteChecklistItem = (index: number) => {
+    setFormState(prev => ({
+      ...prev,
+      checklistItems: prev.checklistItems.filter((_, i) => i !== index)
+    }));
+  };
+  
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      // Validate required fields
+      if (!formState.title || !formState.clientId || !formState.permitType || 
+          !formState.location || !formState.description) {
+        throw new Error("Please fill in all required fields");
+      }
+      
+      // Create the permit
+      const permitId = addPermit({
+        title: formState.title,
+        clientId: formState.clientId,
+        permitType: formState.permitType,
+        status: formState.status,
+        location: formState.location,
+        description: formState.description,
+        assignedTo: formState.assignedTo || undefined,
+        expiresAt: formState.expiresAt || null,
+      });
+      
+      // Add checklist items
+      for (const item of formState.checklistItems) {
+        addChecklistItem({
+          permitId,
+          title: item,
+          completed: false,
+        });
+      }
+      
+      // Redirect to the permit detail page
+      router.push(`/permits/${permitId}`);
+      
+    } catch (err: any) {
+      setError(err.message);
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Permit type options
+  const permitTypes = [
+    { value: 'Construction', label: 'Construction' },
+    { value: 'Renovation', label: 'Renovation' },
+    { value: 'Electrical', label: 'Electrical' },
+    { value: 'Plumbing', label: 'Plumbing' },
+    { value: 'Mechanical', label: 'Mechanical' },
+    { value: 'Demolition', label: 'Demolition' },
+    { value: 'Signage', label: 'Signage' },
+    { value: 'Installation', label: 'Installation' },
+    { value: 'Other', label: 'Other' },
+  ];
+
   return (
     <DashboardLayout title="Create New Permit">
       <div className="mb-6">
@@ -20,17 +152,27 @@ export default function NewPermitPage() {
         <p className="text-gray-500 mt-1">Fill out the permit details below</p>
       </div>
       
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center">
+          <FiAlertCircle className="mr-2" />
+          {error}
+        </div>
+      )}
+      
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <form>
-          <div className="grid grid-cols-2 gap-6 mb-6">
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label htmlFor="permitTitle" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                 Permit Title <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                id="permitTitle"
-                name="permitTitle"
+                id="title"
+                name="title"
+                value={formState.title}
+                onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Enter permit title"
                 required
@@ -45,14 +187,17 @@ export default function NewPermitPage() {
                 <select
                   id="clientId"
                   name="clientId"
+                  value={formState.clientId}
+                  onChange={handleInputChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 >
                   <option value="">Select client</option>
-                  <option value="1">Bank of America</option>
-                  <option value="2">Wells Fargo</option>
-                  <option value="3">First National Bank</option>
-                  <option value="4">Chase Bank</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
+                  ))}
                 </select>
                 <Link 
                   href="/clients/new"
@@ -70,18 +215,17 @@ export default function NewPermitPage() {
               <select
                 id="permitType"
                 name="permitType"
+                value={formState.permitType}
+                onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                 required
               >
                 <option value="">Select type</option>
-                <option value="construction">Construction</option>
-                <option value="renovation">Renovation</option>
-                <option value="electrical">Electrical</option>
-                <option value="plumbing">Plumbing</option>
-                <option value="mechanical">Mechanical</option>
-                <option value="demolition">Demolition</option>
-                <option value="signage">Signage</option>
-                <option value="other">Other</option>
+                {permitTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
               </select>
             </div>
             
@@ -92,6 +236,8 @@ export default function NewPermitPage() {
               <select
                 id="status"
                 name="status"
+                value={formState.status}
+                onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                 required
               >
@@ -103,7 +249,7 @@ export default function NewPermitPage() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
                 Location <span className="text-red-500">*</span>
@@ -112,6 +258,8 @@ export default function NewPermitPage() {
                 type="text"
                 id="location"
                 name="location"
+                value={formState.location}
+                onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Project location"
                 required
@@ -126,8 +274,24 @@ export default function NewPermitPage() {
                 type="text"
                 id="assignedTo"
                 name="assignedTo"
+                value={formState.assignedTo}
+                onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Person responsible for this permit"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="expiresAt" className="block text-sm font-medium text-gray-700 mb-1">
+                Expiration Date
+              </label>
+              <input
+                type="date"
+                id="expiresAt"
+                name="expiresAt"
+                value={formState.expiresAt}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
@@ -140,6 +304,8 @@ export default function NewPermitPage() {
               id="description"
               name="description"
               rows={4}
+              value={formState.description}
+              onChange={handleInputChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="Detailed description of the permit"
               required
@@ -150,44 +316,18 @@ export default function NewPermitPage() {
             <h3 className="text-lg font-medium mb-4">Checklist Items</h3>
             
             <div className="space-y-3 mb-4">
-              <div className="flex items-center p-3 border border-gray-200 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="checkItem1"
-                  name="checklistItems"
-                  value="Application form completed"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="checkItem1" className="ml-3 block text-sm font-medium text-gray-700">
-                  Application form completed
-                </label>
-              </div>
-              
-              <div className="flex items-center p-3 border border-gray-200 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="checkItem2"
-                  name="checklistItems"
-                  value="Payment processed"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="checkItem2" className="ml-3 block text-sm font-medium text-gray-700">
-                  Payment processed
-                </label>
-              </div>
-              
-              <div className="flex items-center p-3 border border-gray-200 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="checkItem3"
-                  name="checklistItems"
-                  value="Site plans submitted"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="checkItem3" className="ml-3 block text-sm font-medium text-gray-700">
-                  Site plans submitted
-                </label>
-              </div>
+              {formState.checklistItems.map((item, index) => (
+                <div key={index} className="flex items-center p-3 border border-gray-200 rounded-lg group">
+                  <div className="flex-1">{item}</div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteChecklistItem(index)}
+                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <FiTrash size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
             
             <div className="flex items-center mb-6">
@@ -195,11 +335,15 @@ export default function NewPermitPage() {
                 type="text"
                 id="newChecklistItem"
                 name="newChecklistItem"
+                value={newChecklistItem}
+                onChange={(e) => setNewChecklistItem(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChecklistItem())}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Add new checklist item..."
               />
               <button
                 type="button"
+                onClick={handleAddChecklistItem}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-r-lg hover:bg-indigo-700"
               >
                 <FiPlus />
@@ -217,8 +361,9 @@ export default function NewPermitPage() {
             <button
               type="submit"
               className="btn-primary flex items-center"
+              disabled={isSubmitting}
             >
-              <FiSave className="mr-2" /> Create Permit
+              <FiSave className="mr-2" /> {isSubmitting ? 'Creating...' : 'Create Permit'}
             </button>
           </div>
         </form>

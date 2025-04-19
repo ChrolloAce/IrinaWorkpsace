@@ -249,7 +249,7 @@ export default function PermitDetailPage() {
 
   return (
     <DashboardLayout title={`Permit: ${permit.title}`}>
-      <div className="max-w-full w-full mx-auto px-4">
+      <div className="w-full">
         <div className="mb-6">
           <Link
             href="/permits"

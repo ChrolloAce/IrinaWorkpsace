@@ -16,10 +16,12 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 lg:content-area">
+      <div className="flex-1 flex flex-col min-w-0 lg:content-area w-full">
         <Header title={title} />
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-          {children}
+        <main className="flex-1 px-4 md:px-6 lg:px-8 py-6 overflow-auto w-full">
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
         </main>
         <footer className="py-3 px-6 text-center text-sm text-gray-500 border-t border-gray-100 bg-white">
           <p>&copy; {new Date().getFullYear()} Permit Management Dashboard. All rights reserved.</p>

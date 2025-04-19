@@ -13,7 +13,7 @@ import 'server-only';
  * @returns Promise with the file path and PDF data
  */
 export async function generatePdfInvoice(
-  invoiceData: ReturnType<typeof createInvoiceData>,
+  invoiceData: Awaited<ReturnType<typeof createInvoiceData>>,
   fileName: string
 ): Promise<{ buffer: ArrayBuffer; base64: string; pdfData: string }> {
   try {
@@ -112,7 +112,7 @@ export async function generatePdfInvoice(
 /**
  * Creates an invoice object with all necessary data
  */
-export function createInvoiceData(
+export async function createInvoiceData(
   permit: Permit,
   client: Client,
   checklistItems: ChecklistItem[]

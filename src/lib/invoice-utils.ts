@@ -190,12 +190,16 @@ export async function sendInvoiceEmail(
 ): Promise<any> {
   console.log(`Sending email to ${to} with subject: ${subject}`);
   console.log(`Attaching PDF: ${pdfPath}`);
+  console.log(`SMTP Host: ${process.env.SMTP_HOST}`);
+  
+  // Double-check that we're using the correct SMTP host
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com'; // Default to gmail if not set
   
   // Set up Nodemailer
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: Boolean(process.env.SMTP_SECURE),
+    host: smtpHost,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: Boolean(process.env.SMTP_SECURE === 'true'),
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASSWORD,

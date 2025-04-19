@@ -37,6 +37,13 @@ export async function sendInvoiceEmailAction(
   pdfPath: string
 ) {
   try {
+    // Log debug information
+    console.log(`Attempting to send email with SMTP config:
+      Host: ${process.env.SMTP_HOST}
+      Port: ${process.env.SMTP_PORT}
+      User: ${process.env.SMTP_USER}
+    `);
+    
     const result = await sendInvoiceEmail(clientEmail, subject, text, html, pdfPath);
     return { success: true, result };
   } catch (error) {

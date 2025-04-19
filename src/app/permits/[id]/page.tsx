@@ -249,361 +249,363 @@ export default function PermitDetailPage() {
 
   return (
     <DashboardLayout title={`Permit: ${permit.title}`}>
-      <div className="mb-6">
-        <Link
-          href="/permits"
-          className="flex items-center text-sm text-gray-500 hover:text-indigo-600 mb-4"
-        >
-          <FiArrowLeft className="mr-2" /> Back to Permits
-        </Link>
-        
-        <div className="flex justify-between items-center">
-          {!isEditing ? (
-            <>
-              <h1 className="text-2xl font-semibold">{permit.title}</h1>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setShowInvoiceModal(true)}
-                  className="btn-primary flex items-center"
-                >
-                  <FiFileText className="mr-2" /> Generate Invoice
-                </button>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="btn-secondary flex items-center"
-                >
-                  <FiEdit className="mr-2" /> Edit Permit
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <h1 className="text-2xl font-semibold">Edit Permit</h1>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="btn-secondary flex items-center"
-                >
-                  <FiX className="mr-2" /> Cancel
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  className="btn-primary flex items-center"
-                >
-                  <FiCheck className="mr-2" /> Save Changes
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      
-      {/* Error message */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center">
-          <FiAlertCircle className="mr-2" />
-          {error}
-        </div>
-      )}
-      
-      {/* Progress bar */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="font-semibold">Permit Progress</h3>
-          <span className="text-sm font-medium">{progress}% Complete</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div 
-            className="bg-indigo-600 h-2.5 rounded-full" 
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-        <div className="lg:col-span-3">
-          {/* Permit details */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Permit Details</h2>
-            
-            {isEditing ? (
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                    Permit Title <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="title"
-                    name="title"
-                    value={editForm.title}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    required
-                  />
+      <div className="max-w-full w-full mx-auto px-4">
+        <div className="mb-6">
+          <Link
+            href="/permits"
+            className="flex items-center text-sm text-gray-500 hover:text-indigo-600 mb-4"
+          >
+            <FiArrowLeft className="mr-2" /> Back to Permits
+          </Link>
+          
+          <div className="flex justify-between items-center">
+            {!isEditing ? (
+              <>
+                <h1 className="text-2xl font-semibold">{permit.title}</h1>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setShowInvoiceModal(true)}
+                    className="btn-primary flex items-center"
+                  >
+                    <FiFileText className="mr-2" /> Generate Invoice
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="btn-secondary flex items-center"
+                  >
+                    <FiEdit className="mr-2" /> Edit Permit
+                  </button>
                 </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="permitType" className="block text-sm font-medium text-gray-700 mb-1">
-                      Permit Type <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="permitType"
-                      name="permitType"
-                      value={editForm.permitType}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                      required
-                    >
-                      <option value="">Select type</option>
-                      {permitTypes.map(type => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                      Status <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="status"
-                      name="status"
-                      value={editForm.status}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                      required
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="submitted">Submitted</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="approved">Approved</option>
-                      <option value="expired">Expired</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                      Location <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="location"
-                      name="location"
-                      value={editForm.location}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="assignedTo" className="block text-sm font-medium text-gray-700 mb-1">
-                      Assigned To
-                    </label>
-                    <input
-                      type="text"
-                      id="assignedTo"
-                      name="assignedTo"
-                      value={editForm.assignedTo}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="expiresAt" className="block text-sm font-medium text-gray-700 mb-1">
-                      Expiration Date
-                    </label>
-                    <input
-                      type="date"
-                      id="expiresAt"
-                      name="expiresAt"
-                      value={editForm.expiresAt}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    rows={4}
-                    value={editForm.description}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    required
-                  ></textarea>
-                </div>
-              </div>
+              </>
             ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Permit Type</p>
-                    <p className="font-medium">{permit.permitType}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Status</p>
-                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusStyles(permit.status)}`}>
-                      {permit.status.charAt(0).toUpperCase() + permit.status.slice(1)}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Location</p>
-                    <p className="font-medium">{permit.location}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Client</p>
-                    <p className="font-medium">{client?.name || 'Unknown Client'}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Assigned To</p>
-                    <p className="font-medium">{permit.assignedTo || 'Unassigned'}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Expiration Date</p>
-                    <p className="font-medium">
-                      {permit.expiresAt ? formatDate(permit.expiresAt) : 'No expiration date'}
-                    </p>
-                  </div>
+              <>
+                <h1 className="text-2xl font-semibold">Edit Permit</h1>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="btn-secondary flex items-center"
+                  >
+                    <FiX className="mr-2" /> Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="btn-primary flex items-center"
+                  >
+                    <FiCheck className="mr-2" /> Save Changes
+                  </button>
                 </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500">Description</p>
-                  <p className="whitespace-pre-wrap">{permit.description}</p>
-                </div>
-              </div>
+              </>
             )}
           </div>
         </div>
         
-        {/* Checklist items */}
-        <div className="lg:col-span-1">
-          <PermitChecklist
-            items={permitChecklists}
-            onItemToggle={handleToggleChecklistItem}
-            onAddItem={handleAddChecklistItem}
-            onDeleteItem={handleDeleteChecklistItem}
-            onUpdateNotes={handleUpdateNotes}
-            onUpdatePrice={handleUpdatePrice}
-            showPrices={true}
-          />
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center">
+            <FiAlertCircle className="mr-2" />
+            {error}
+          </div>
+        )}
+        
+        {/* Progress bar */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6 w-full">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold">Permit Progress</h3>
+            <span className="text-sm font-medium">{progress}% Complete</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div 
+              className="bg-indigo-600 h-2.5 rounded-full" 
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
         </div>
-      </div>
-      
-      {/* Invoice Modal */}
-      {showInvoiceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
-            <h3 className="text-xl font-medium mb-4">Invoice Preview</h3>
-            <div className="mb-6">
-              <div className="border-b pb-4 mb-4">
-                <div className="flex justify-between mb-2">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+          <div className="lg:col-span-3">
+            {/* Permit details */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 w-full">
+              <h2 className="text-lg font-semibold mb-4">Permit Details</h2>
+              
+              {isEditing ? (
+                <div className="space-y-4">
                   <div>
-                    <h4 className="font-semibold text-lg">Permit Management System</h4>
-                    <p className="text-gray-500 text-sm">Invoice #{permitId.substring(0, 8).toUpperCase()}</p>
-                    <p className="text-gray-500 text-sm">Date: {new Date().toLocaleDateString()}</p>
+                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                      Permit Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="title"
+                      name="title"
+                      value={editForm.title}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
                   </div>
-                  <div className="text-right">
-                    <h4 className="font-semibold">Billed To:</h4>
-                    <p>{client?.name}</p>
-                    <p className="text-sm text-gray-500">{client?.email}</p>
-                    <p className="text-sm text-gray-500">{client?.address}, {client?.city}, {client?.state} {client?.zipCode}</p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="permitType" className="block text-sm font-medium text-gray-700 mb-1">
+                        Permit Type <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="permitType"
+                        name="permitType"
+                        value={editForm.permitType}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                        required
+                      >
+                        <option value="">Select type</option>
+                        {permitTypes.map(type => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="status"
+                        name="status"
+                        value={editForm.status}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                        required
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="submitted">Submitted</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="approved">Approved</option>
+                        <option value="expired">Expired</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                        Location <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="location"
+                        name="location"
+                        value={editForm.location}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="assignedTo" className="block text-sm font-medium text-gray-700 mb-1">
+                        Assigned To
+                      </label>
+                      <input
+                        type="text"
+                        id="assignedTo"
+                        name="assignedTo"
+                        value={editForm.assignedTo}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="expiresAt" className="block text-sm font-medium text-gray-700 mb-1">
+                        Expiration Date
+                      </label>
+                      <input
+                        type="date"
+                        id="expiresAt"
+                        name="expiresAt"
+                        value={editForm.expiresAt}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                      Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      rows={4}
+                      value={editForm.description}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    ></textarea>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Permit Type</p>
+                      <p className="font-medium">{permit.permitType}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-500">Status</p>
+                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusStyles(permit.status)}`}>
+                        {permit.status.charAt(0).toUpperCase() + permit.status.slice(1)}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-500">Location</p>
+                      <p className="font-medium">{permit.location}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-500">Client</p>
+                      <p className="font-medium">{client?.name || 'Unknown Client'}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-500">Assigned To</p>
+                      <p className="font-medium">{permit.assignedTo || 'Unassigned'}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-500">Expiration Date</p>
+                      <p className="font-medium">
+                        {permit.expiresAt ? formatDate(permit.expiresAt) : 'No expiration date'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-500">Description</p>
+                    <p className="whitespace-pre-wrap">{permit.description}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Checklist items */}
+          <div className="lg:col-span-1">
+            <PermitChecklist
+              items={permitChecklists}
+              onItemToggle={handleToggleChecklistItem}
+              onAddItem={handleAddChecklistItem}
+              onDeleteItem={handleDeleteChecklistItem}
+              onUpdateNotes={handleUpdateNotes}
+              onUpdatePrice={handleUpdatePrice}
+              showPrices={true}
+            />
+          </div>
+        </div>
+        
+        {/* Invoice Modal */}
+        {showInvoiceModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
+              <h3 className="text-xl font-medium mb-4">Invoice Preview</h3>
+              <div className="mb-6">
+                <div className="border-b pb-4 mb-4">
+                  <div className="flex justify-between mb-2">
+                    <div>
+                      <h4 className="font-semibold text-lg">Permit Management System</h4>
+                      <p className="text-gray-500 text-sm">Invoice #{permitId.substring(0, 8).toUpperCase()}</p>
+                      <p className="text-gray-500 text-sm">Date: {new Date().toLocaleDateString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <h4 className="font-semibold">Billed To:</h4>
+                      <p>{client?.name}</p>
+                      <p className="text-sm text-gray-500">{client?.email}</p>
+                      <p className="text-sm text-gray-500">{client?.address}, {client?.city}, {client?.state} {client?.zipCode}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <h4 className="font-semibold mb-2">Permit: {permit.title}</h4>
+                  <p className="text-gray-500 text-sm mb-2">Permit Number: {permit.permitNumber}</p>
+                  
+                  <table className="w-full mb-4">
+                    <thead className="bg-gray-50 text-left">
+                      <tr>
+                        <th className="py-2 px-4 text-sm">Description</th>
+                        <th className="py-2 px-4 text-sm">Status</th>
+                        <th className="py-2 px-4 text-sm text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {permitChecklists.map(item => (
+                        <tr key={item.id} className="text-sm">
+                          <td className="py-3 px-4">{item.title}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                              item.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {item.completed ? 'Completed' : 'In Progress'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">${(item.price || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50 font-medium">
+                      <tr>
+                        <td className="py-3 px-4" colSpan={2}>Total Amount</td>
+                        <td className="py-3 px-4 text-right">${totalCost.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 px-4" colSpan={2}>Completed Work</td>
+                        <td className="py-3 px-4 text-right">${completedCost.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 px-4" colSpan={2}>Balance Due</td>
+                        <td className="py-3 px-4 text-right font-bold">${(totalCost - completedCost).toFixed(2)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                  
+                  <div className="bg-gray-50 p-4 rounded text-sm">
+                    <p className="font-medium mb-1">Notes:</p>
+                    <p>This is just a preview. The generated PDF will include all the details shown here.</p>
+                    <p>Payment due within 30 days. Thank you for your business!</p>
                   </div>
                 </div>
               </div>
               
-              <div className="mb-4">
-                <h4 className="font-semibold mb-2">Permit: {permit.title}</h4>
-                <p className="text-gray-500 text-sm mb-2">Permit Number: {permit.permitNumber}</p>
-                
-                <table className="w-full mb-4">
-                  <thead className="bg-gray-50 text-left">
-                    <tr>
-                      <th className="py-2 px-4 text-sm">Description</th>
-                      <th className="py-2 px-4 text-sm">Status</th>
-                      <th className="py-2 px-4 text-sm text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {permitChecklists.map(item => (
-                      <tr key={item.id} className="text-sm">
-                        <td className="py-3 px-4">{item.title}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                            item.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {item.completed ? 'Completed' : 'In Progress'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">${(item.price || 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 font-medium">
-                    <tr>
-                      <td className="py-3 px-4" colSpan={2}>Total Amount</td>
-                      <td className="py-3 px-4 text-right">${totalCost.toFixed(2)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 px-4" colSpan={2}>Completed Work</td>
-                      <td className="py-3 px-4 text-right">${completedCost.toFixed(2)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 px-4" colSpan={2}>Balance Due</td>
-                      <td className="py-3 px-4 text-right font-bold">${(totalCost - completedCost).toFixed(2)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-                
-                <div className="bg-gray-50 p-4 rounded text-sm">
-                  <p className="font-medium mb-1">Notes:</p>
-                  <p>This is just a preview. The generated PDF will include all the details shown here.</p>
-                  <p>Payment due within 30 days. Thank you for your business!</p>
-                </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                >
+                  Cancel
+                </button>
+                {!invoiceGenerated ? (
+                  <button
+                    onClick={handleGenerateInvoice}
+                    className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center"
+                  >
+                    <FiFileText className="mr-2" /> Generate PDF
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSendInvoice}
+                    className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center"
+                  >
+                    <FiMail className="mr-2" /> Send via Email
+                  </button>
+                )}
               </div>
             </div>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowInvoiceModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
-              >
-                Cancel
-              </button>
-              {!invoiceGenerated ? (
-                <button
-                  onClick={handleGenerateInvoice}
-                  className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center"
-                >
-                  <FiFileText className="mr-2" /> Generate PDF
-                </button>
-              ) : (
-                <button
-                  onClick={handleSendInvoice}
-                  className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center"
-                >
-                  <FiMail className="mr-2" /> Send via Email
-                </button>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </DashboardLayout>
   );
 } 

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import Link from 'next/link';
-import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle, FiFileText, FiMail } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
 import { formatDate } from '@/lib/utils';
+import PermitChecklist from '@/components/permits/PermitChecklist';
+import { generatePdfInvoice, sendInvoiceEmail } from '@/lib/invoice-utils';
 
 export default function PermitDetailPage() {
   const params = useParams();
@@ -29,6 +31,8 @@ export default function PermitDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newItemText, setNewItemText] = useState('');
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceGenerated, setInvoiceGenerated] = useState(false);
   const [editForm, setEditForm] = useState({
     title: permit?.title || '',
     permitType: permit?.permitType || '',
@@ -69,16 +73,23 @@ export default function PermitDetailPage() {
   };
   
   // Handle adding a new checklist item
-  const handleAddChecklistItem = () => {
-    if (!newItemText.trim()) return;
-    
+  const handleAddChecklistItem = (item: Omit<typeof checklistItems[0], 'id' | 'permitId' | 'createdAt'>) => {
     addChecklistItem({
       permitId,
-      title: newItemText.trim(),
-      completed: false,
+      title: item.title,
+      completed: item.completed,
+      price: item.price,
     });
-    
-    setNewItemText('');
+  };
+  
+  // Handle updating checklist item notes
+  const handleUpdateNotes = (itemId: string, notes: string) => {
+    updateChecklistItem(itemId, { notes });
+  };
+  
+  // Handle updating checklist item price
+  const handleUpdatePrice = (itemId: string, price: number) => {
+    updateChecklistItem(itemId, { price });
   };
   
   // Handle input changes for the edit form
@@ -114,6 +125,62 @@ export default function PermitDetailPage() {
     }
   };
   
+  // Generate invoice
+  const handleGenerateInvoice = async () => {
+    try {
+      setInvoiceGenerated(true);
+      
+      // Generate PDF from the invoice content
+      const fileName = `invoice-${permitId.substring(0, 8)}.pdf`;
+      await generatePdfInvoice('invoice-content', fileName);
+      
+      // Show success message or continue to email option
+    } catch (error) {
+      console.error('Error generating invoice:', error);
+      setError('Failed to generate invoice. Please try again.');
+    }
+  };
+  
+  // Send invoice email
+  const handleSendInvoice = async () => {
+    try {
+      if (!client?.email) {
+        throw new Error('Client email is required to send the invoice');
+      }
+      
+      // Generate email content
+      const subject = `Invoice for ${permit.title} - ${permit.permitNumber}`;
+      const text = `Please find attached the invoice for permit ${permit.permitNumber}.`;
+      const html = `
+        <h1>Invoice for ${permit.title}</h1>
+        <p>Dear ${client.name},</p>
+        <p>Please find attached the invoice for permit ${permit.permitNumber}.</p>
+        <p>Total amount: $${totalCost.toFixed(2)}</p>
+        <p>Balance due: $${(totalCost - completedCost).toFixed(2)}</p>
+        <p>Thank you for your business!</p>
+      `;
+      
+      // Send the email
+      const pdfPath = `invoice-${permitId.substring(0, 8)}.pdf`;
+      await sendInvoiceEmail(client.email, subject, text, html, pdfPath);
+      
+      // Show success message
+      setShowInvoiceModal(false);
+      setInvoiceGenerated(false);
+    } catch (error) {
+      console.error('Error sending invoice email:', error);
+      setError('Failed to send invoice email. Please try again.');
+    }
+  };
+  
+  // Calculate total cost of all items
+  const totalCost = permitChecklists.reduce((sum, item) => sum + (item.price || 0), 0);
+  
+  // Calculate cost of completed items
+  const completedCost = permitChecklists
+    .filter(item => item.completed)
+    .reduce((sum, item) => sum + (item.price || 0), 0);
+  
   // Permit status styling
   const getStatusStyles = (status: string) => {
     switch (status) {
@@ -125,8 +192,6 @@ export default function PermitDetailPage() {
         return 'bg-yellow-100 text-yellow-800';
       case 'approved':
         return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
       case 'expired':
         return 'bg-purple-100 text-purple-800';
       default:
@@ -161,12 +226,20 @@ export default function PermitDetailPage() {
           {!isEditing ? (
             <>
               <h1 className="text-2xl font-semibold">{permit.title}</h1>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="btn-secondary flex items-center"
-              >
-                <FiEdit className="mr-2" /> Edit Permit
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setShowInvoiceModal(true)}
+                  className="btn-primary flex items-center"
+                >
+                  <FiFileText className="mr-2" /> Generate Invoice
+                </button>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="btn-secondary flex items-center"
+                >
+                  <FiEdit className="mr-2" /> Edit Permit
+                </button>
+              </div>
             </>
           ) : (
             <>
@@ -273,7 +346,6 @@ export default function PermitDetailPage() {
                       <option value="submitted">Submitted</option>
                       <option value="in-progress">In Progress</option>
                       <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
                       <option value="expired">Expired</option>
                     </select>
                   </div>
@@ -386,60 +458,116 @@ export default function PermitDetailPage() {
         
         {/* Checklist items */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4">Checklist</h2>
-            
-            <div className="space-y-3 mb-4">
-              {permitChecklists.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No checklist items yet</p>
-              ) : (
-                permitChecklists.map(item => (
-                  <div key={item.id} className="flex items-center p-3 border border-gray-200 rounded-lg group">
-                    <input
-                      type="checkbox"
-                      id={`check-${item.id}`}
-                      checked={item.completed}
-                      onChange={() => handleToggleChecklistItem(item.id, !item.completed)}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                    <label
-                      htmlFor={`check-${item.id}`}
-                      className={`flex-1 ml-3 text-sm ${item.completed ? 'line-through text-gray-500' : 'text-gray-700'}`}
-                    >
-                      {item.title}
-                    </label>
-                    <button
-                      onClick={() => handleDeleteChecklistItem(item.id)}
-                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <FiTrash size={16} />
-                    </button>
+          <PermitChecklist
+            items={permitChecklists}
+            onItemToggle={handleToggleChecklistItem}
+            onAddItem={handleAddChecklistItem}
+            onDeleteItem={handleDeleteChecklistItem}
+            onUpdateNotes={handleUpdateNotes}
+            onUpdatePrice={handleUpdatePrice}
+            showPrices={true}
+          />
+        </div>
+      </div>
+      
+      {/* Invoice Modal */}
+      {showInvoiceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
+            <h3 className="text-xl font-medium mb-4">Invoice Generator</h3>
+            <div className="mb-6">
+              <div id="invoice-content" className="border-b pb-4 mb-4">
+                <div className="flex justify-between mb-2">
+                  <div>
+                    <h4 className="font-semibold text-lg">Permit Management</h4>
+                    <p className="text-gray-500 text-sm">Invoice #{permitId.substring(0, 8).toUpperCase()}</p>
+                    <p className="text-gray-500 text-sm">Date: {new Date().toLocaleDateString()}</p>
                   </div>
-                ))
-              )}
+                  <div className="text-right">
+                    <h4 className="font-semibold">Billed To:</h4>
+                    <p>{client?.name}</p>
+                    <p className="text-sm text-gray-500">{client?.email}</p>
+                    <p className="text-sm text-gray-500">{client?.address}, {client?.city}, {client?.state} {client?.zipCode}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <h4 className="font-semibold mb-2">Permit: {permit.title}</h4>
+                <p className="text-gray-500 text-sm mb-2">Permit Number: {permit.permitNumber}</p>
+                
+                <table className="w-full mb-4">
+                  <thead className="bg-gray-50 text-left">
+                    <tr>
+                      <th className="py-2 px-4 text-sm">Description</th>
+                      <th className="py-2 px-4 text-sm">Status</th>
+                      <th className="py-2 px-4 text-sm text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {permitChecklists.map(item => (
+                      <tr key={item.id} className="text-sm">
+                        <td className="py-3 px-4">{item.title}</td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                            item.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {item.completed ? 'Completed' : 'In Progress'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">${(item.price || 0).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 font-medium">
+                    <tr>
+                      <td className="py-3 px-4" colSpan={2}>Total Amount</td>
+                      <td className="py-3 px-4 text-right">${totalCost.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-4" colSpan={2}>Completed Work</td>
+                      <td className="py-3 px-4 text-right">${completedCost.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-4" colSpan={2}>Balance Due</td>
+                      <td className="py-3 px-4 text-right font-bold">${(totalCost - completedCost).toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+                
+                <div className="bg-gray-50 p-4 rounded text-sm">
+                  <p className="font-medium mb-1">Notes:</p>
+                  <p>Payment due within 30 days. Thank you for your business!</p>
+                </div>
+              </div>
             </div>
             
-            <div className="flex items-center">
-              <input
-                type="text"
-                id="newItemText"
-                name="newItemText"
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChecklistItem())}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Add new checklist item..."
-              />
+            <div className="flex justify-end space-x-3">
               <button
-                onClick={handleAddChecklistItem}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-r-lg hover:bg-indigo-700"
+                onClick={() => setShowInvoiceModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
               >
-                <FiPlusCircle />
+                Cancel
               </button>
+              {!invoiceGenerated ? (
+                <button
+                  onClick={handleGenerateInvoice}
+                  className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center"
+                >
+                  <FiFileText className="mr-2" /> Generate PDF
+                </button>
+              ) : (
+                <button
+                  onClick={handleSendInvoice}
+                  className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center"
+                >
+                  <FiMail className="mr-2" /> Send via Email
+                </button>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      )}
     </DashboardLayout>
   );
 } 

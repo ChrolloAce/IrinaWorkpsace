@@ -39,5 +39,6 @@ export type ChecklistItem = {
   title: string;
   completed: boolean;
   notes?: string;
+  price?: number; // Price for this checklist item
   createdAt: string;
 }; 

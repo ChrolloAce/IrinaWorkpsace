@@ -74,36 +74,37 @@ export default function PermitChecklist({
     .reduce((sum, item) => sum + (item.price || 0), 0);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-white rounded-xl shadow-sm p-6 h-full w-full">
+      <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Permit Checklist</h3>
-        <div className="flex items-center text-sm text-gray-500">
-          <span className="mr-2">{completedCount} of {items.length} completed</span>
-          <div className="w-32 bg-gray-200 rounded-full h-2.5">
-            <div 
-              className="bg-indigo-600 h-2.5 rounded-full" 
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
+        <div className="text-sm text-gray-500">
+          {completedCount} of {items.length} completed
         </div>
       </div>
 
+      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+        <div 
+          className="bg-indigo-600 h-2.5 rounded-full" 
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+
       {showPrices && (
-        <div className="mb-6 flex justify-between text-sm">
-          <div className="bg-gray-50 p-2 rounded">
+        <div className="mb-4 grid grid-cols-2 gap-2 text-sm">
+          <div className="bg-gray-50 p-3 rounded">
             <span className="text-gray-500">Total Cost: </span>
             <span className="font-medium">${totalPrice.toFixed(2)}</span>
           </div>
-          <div className="bg-gray-50 p-2 rounded">
+          <div className="bg-gray-50 p-3 rounded">
             <span className="text-gray-500">Completed: </span>
             <span className="font-medium">${completedPrice.toFixed(2)}</span>
           </div>
         </div>
       )}
 
-      <div className="space-y-4 mb-6">
+      <div className="space-y-3 mb-4 max-h-[500px] overflow-y-auto">
         {items.map((item) => (
-          <div key={item.id} className="flex items-start p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+          <div key={item.id} className="flex items-start p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
             <button 
               className="mt-0.5 mr-3 text-gray-500 hover:text-indigo-600"
               onClick={() => onItemToggle(item.id, !item.completed)}
@@ -115,13 +116,13 @@ export default function PermitChecklist({
                 <FiSquare className="h-5 w-5" />
               )}
             </button>
-            <div className="flex-1">
-              <div className="flex justify-between">
-                <p className={`font-medium ${item.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-center">
+                <p className={`font-medium truncate mr-2 ${item.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                   {item.title}
                 </p>
                 {showPrices && (
-                  <div className="flex items-center">
+                  <div className="flex items-center flex-shrink-0">
                     <FiDollarSign className="h-4 w-4 text-gray-400 mr-1" />
                     {!readOnly && onUpdatePrice ? (
                       <input
@@ -152,7 +153,7 @@ export default function PermitChecklist({
             </div>
             {onDeleteItem && !readOnly && (
               <button 
-                className="ml-2 text-gray-400 hover:text-red-600"
+                className="ml-2 text-gray-400 hover:text-red-600 flex-shrink-0"
                 onClick={() => onDeleteItem(item.id)}
               >
                 <FiTrash className="h-4 w-4" />
@@ -163,7 +164,7 @@ export default function PermitChecklist({
       </div>
 
       {onAddItem && !readOnly && (
-        <div>
+        <div className="mt-auto">
           <div className="flex items-center mb-2">
             <input
               type="text"
@@ -181,8 +182,8 @@ export default function PermitChecklist({
             </button>
           </div>
           {showPrices && (
-            <div className="flex items-center mb-2">
-              <div className="flex items-center border border-gray-200 rounded-lg py-2 px-4 text-sm">
+            <div className="flex items-center">
+              <div className="flex items-center w-full border border-gray-200 rounded-lg py-2 px-4 text-sm">
                 <FiDollarSign className="h-4 w-4 text-gray-400 mr-1" />
                 <input
                   type="number"

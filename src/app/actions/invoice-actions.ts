@@ -3,6 +3,9 @@
 import { generatePdfInvoice, sendInvoiceEmail, createInvoiceData } from '@/lib/invoice-utils';
 import { ChecklistItem, Client, Permit } from '@/lib/types';
 
+// Force Edge runtime to maintain consistent global state
+export const runtime = 'edge';
+
 // Define the cache structure
 declare global {
   var __PDF_CACHE: {
@@ -43,14 +46,21 @@ export async function generateInvoiceAction(
       // Using URL since we can't use the filesystem
       const downloadUrl = `/api/download?id=${pdfId}`;
       
+      // Initialize the cache if not exists
+      if (typeof global.__PDF_CACHE === 'undefined') {
+        global.__PDF_CACHE = {};
+      }
+      
       // Store PDF in a global variable for short-term access from API route
-      global.__PDF_CACHE = global.__PDF_CACHE || {};
       global.__PDF_CACHE[pdfId] = {
         fileName,
         contentType: 'application/pdf',
         data: pdfData.base64,
         createdAt: new Date().toISOString()
       };
+      
+      console.log(`Stored PDF in cache with ID: ${pdfId}`);
+      console.log(`Cache now contains ${Object.keys(global.__PDF_CACHE).length} PDFs`);
       
       // Clean up old PDFs (keeping only last 10)
       const pdfIds = Object.keys(global.__PDF_CACHE);
@@ -68,7 +78,8 @@ export async function generateInvoiceAction(
         success: true, 
         fileName,
         pdfId,
-        downloadUrl
+        downloadUrl,
+        pdfData: pdfData.base64 // Return the PDF data directly
       };
     } catch (err) {
       console.error("Error storing PDF data:", err);

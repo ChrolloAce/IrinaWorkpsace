@@ -12,6 +12,9 @@ declare global {
   };
 }
 
+// Force Edge runtime to maintain consistent global state
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest) {
   try {
     // Get the PDF ID from the URL
@@ -29,6 +32,9 @@ export async function GET(request: NextRequest) {
     }
     
     const pdfData = global.__PDF_CACHE[pdfId];
+    
+    // Log the found PDF data for debugging
+    console.log(`Found PDF in cache: ${pdfId}, filename: ${pdfData.fileName}`);
     
     // Extract the binary data from the data URI
     const base64Data = pdfData.data.split('base64,')[1];

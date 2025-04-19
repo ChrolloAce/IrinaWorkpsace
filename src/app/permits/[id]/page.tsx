@@ -35,6 +35,7 @@ export default function PermitDetailPage() {
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
   const [generatedPdfId, setGeneratedPdfId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadData, setDownloadData] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     title: permit?.title || '',
     permitType: permit?.permitType || '',
@@ -143,6 +144,7 @@ export default function PermitDetailPage() {
         setInvoiceGenerated(true);
         setGeneratedPdfId(result.pdfId || null);
         setDownloadUrl(result.downloadUrl || null);
+        setDownloadData(result.pdfData || null);
         setError(null);
       } else {
         throw new Error(result.error || 'Failed to generate invoice');
@@ -156,7 +158,15 @@ export default function PermitDetailPage() {
   
   // Handle download invoice
   const handleDownloadInvoice = () => {
-    if (downloadUrl) {
+    if (downloadData) {
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = downloadData;
+      link.download = `invoice-${permitId.substring(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (downloadUrl) {
       window.open(downloadUrl, '_blank');
     } else {
       setError('Download URL not available. Please regenerate the invoice.');
@@ -332,8 +342,8 @@ export default function PermitDetailPage() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2">
             {/* Permit details */}
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6 w-full">
               <h2 className="text-lg font-semibold mb-4">Permit Details</h2>

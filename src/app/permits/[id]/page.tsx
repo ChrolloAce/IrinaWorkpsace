@@ -34,6 +34,7 @@ export default function PermitDetailPage() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
   const [generatedFileName, setGeneratedFileName] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     title: permit?.title || '',
     permitType: permit?.permitType || '',
@@ -141,6 +142,7 @@ export default function PermitDetailPage() {
       if (result.success) {
         setInvoiceGenerated(true);
         setGeneratedFileName(result.fileName || null);
+        setDownloadUrl(result.downloadUrl || null);
         setError(null);
       } else {
         throw new Error(result.error || 'Failed to generate invoice');
@@ -149,6 +151,15 @@ export default function PermitDetailPage() {
     } catch (error: any) {
       console.error('Error generating invoice:', error);
       setError(error.message || 'Failed to generate invoice. Please try again.');
+    }
+  };
+  
+  // Handle download invoice
+  const handleDownloadInvoice = () => {
+    if (downloadUrl) {
+      window.open(downloadUrl, '_blank');
+    } else {
+      setError('Download URL not available. Please regenerate the invoice.');
     }
   };
   
@@ -249,7 +260,7 @@ export default function PermitDetailPage() {
 
   return (
     <DashboardLayout title={`Permit: ${permit.title}`}>
-      <div className="w-full">
+      <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <Link
             href="/permits"
@@ -594,12 +605,20 @@ export default function PermitDetailPage() {
                     <FiFileText className="mr-2" /> Generate PDF
                   </button>
                 ) : (
-                  <button
-                    onClick={handleSendInvoice}
-                    className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center"
-                  >
-                    <FiMail className="mr-2" /> Send via Email
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleDownloadInvoice}
+                      className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center"
+                    >
+                      <FiFileText className="mr-2" /> Download PDF
+                    </button>
+                    <button
+                      onClick={handleSendInvoice}
+                      className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center"
+                    >
+                      <FiMail className="mr-2" /> Send via Email
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

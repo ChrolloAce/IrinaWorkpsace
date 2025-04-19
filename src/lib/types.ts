@@ -58,4 +58,22 @@ export type ChecklistItem = {
   notes?: string;
   price?: number; // Price for this checklist item
   createdAt: string;
+};
+
+// Template checklist item type
+export type TemplateItem = {
+  id: string;
+  title: string;
+  price?: number;
+  order: number;
+};
+
+// Checklist template type
+export type ChecklistTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  permitType: string;
+  items: TemplateItem[];
+  createdAt: string;
 }; 

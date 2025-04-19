@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import Link from 'next/link';
-import { FiArrowLeft, FiSave, FiPlus, FiTrash, FiAlertCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiSave, FiPlus, FiTrash, FiAlertCircle, FiCheckSquare } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
-import { PermitStatus } from '@/lib/types';
+import { PermitStatus, ChecklistTemplate } from '@/lib/types';
 
 type FormState = {
   title: string;
@@ -22,9 +22,11 @@ type FormState = {
 
 export default function NewPermitPage() {
   const router = useRouter();
-  const { clients, addPermit, addChecklistItem } = useAppContext();
+  const { clients, addPermit, addChecklistItem, checklistTemplates } = useAppContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [filteredTemplates, setFilteredTemplates] = useState<ChecklistTemplate[]>([]);
   
   // Default expiration date (12 months from today)
   const getDefaultExpirationDate = () => {
@@ -43,15 +45,32 @@ export default function NewPermitPage() {
     description: '',
     assignedTo: '',
     expiresAt: getDefaultExpirationDate(),
-    checklistItems: [
-      'Application form completed',
-      'Payment processed',
-      'Site plans submitted',
-    ],
+    checklistItems: [],
   });
   
   // New checklist item input
   const [newChecklistItem, setNewChecklistItem] = useState('');
+
+  // Filter templates based on selected permit type
+  useEffect(() => {
+    if (formState.permitType) {
+      const filtered = checklistTemplates.filter(
+        template => template.permitType === formState.permitType
+      );
+      setFilteredTemplates(filtered);
+      
+      // Clear selected template if it doesn't match the current permit type
+      if (selectedTemplateId) {
+        const template = checklistTemplates.find(t => t.id === selectedTemplateId);
+        if (template && template.permitType !== formState.permitType) {
+          setSelectedTemplateId('');
+        }
+      }
+    } else {
+      setFilteredTemplates([]);
+      setSelectedTemplateId('');
+    }
+  }, [formState.permitType, checklistTemplates, selectedTemplateId]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -82,6 +101,21 @@ export default function NewPermitPage() {
     }));
   };
   
+  // Handle selecting a template
+  const handleSelectTemplate = (templateId: string) => {
+    const template = checklistTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    
+    setSelectedTemplateId(templateId);
+    
+    // Update checklist items with template items
+    const templateItems = template.items.map(item => item.title);
+    setFormState(prev => ({
+      ...prev,
+      checklistItems: templateItems
+    }));
+  };
+  
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,12 +142,28 @@ export default function NewPermitPage() {
       });
       
       // Add checklist items
-      for (const item of formState.checklistItems) {
-        addChecklistItem({
-          permitId,
-          title: item,
-          completed: false,
-        });
+      if (selectedTemplateId) {
+        // If a template is selected, use its items with their prices
+        const template = checklistTemplates.find(t => t.id === selectedTemplateId);
+        if (template) {
+          for (const item of template.items) {
+            addChecklistItem({
+              permitId,
+              title: item.title,
+              completed: false,
+              price: item.price,
+            });
+          }
+        }
+      } else {
+        // Use the manually added checklist items without prices
+        for (const item of formState.checklistItems) {
+          addChecklistItem({
+            permitId,
+            title: item,
+            completed: false,
+          });
+        }
       }
       
       // Redirect to the permit detail page
@@ -315,6 +365,55 @@ export default function NewPermitPage() {
           <div className="border-t border-gray-200 pt-6 mt-6">
             <h3 className="text-lg font-medium mb-4">Checklist Items</h3>
             
+            {/* Template Selection */}
+            {formState.permitType && filteredTemplates.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select a Template (Optional)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredTemplates.map(template => (
+                    <div 
+                      key={template.id}
+                      className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                        selectedTemplateId === template.id 
+                          ? 'border-indigo-500 bg-indigo-50' 
+                          : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                      }`}
+                      onClick={() => handleSelectTemplate(template.id)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium">{template.name}</h4>
+                        {selectedTemplateId === template.id && (
+                          <FiCheckSquare className="text-indigo-600" />
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mb-2 line-clamp-2">{template.description}</p>
+                      <div className="text-sm">
+                        <span className="font-medium">{template.items.length} items</span>
+                        <span className="text-gray-500 mx-1">•</span>
+                        <span>${template.items.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selectedTemplateId && (
+                  <div className="mt-2 text-sm">
+                    <button 
+                      type="button" 
+                      className="text-indigo-600 hover:text-indigo-800"
+                      onClick={() => {
+                        setSelectedTemplateId('');
+                        setFormState(prev => ({ ...prev, checklistItems: [] }));
+                      }}
+                    >
+                      Clear selection
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div className="space-y-3 mb-4">
               {formState.checklistItems.map((item, index) => (
                 <div key={index} className="flex items-center p-3 border border-gray-200 rounded-lg group">
@@ -328,27 +427,36 @@ export default function NewPermitPage() {
                   </button>
                 </div>
               ))}
+              
+              {formState.checklistItems.length === 0 && !selectedTemplateId && (
+                <div className="p-4 border border-dashed rounded-md text-gray-500 text-center">
+                  No checklist items yet. Add items manually or select a template above.
+                </div>
+              )}
             </div>
             
-            <div className="flex items-center mb-6">
-              <input
-                type="text"
-                id="newChecklistItem"
-                name="newChecklistItem"
-                value={newChecklistItem}
-                onChange={(e) => setNewChecklistItem(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChecklistItem())}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Add new checklist item..."
-              />
-              <button
-                type="button"
-                onClick={handleAddChecklistItem}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-r-lg hover:bg-indigo-700"
-              >
-                <FiPlus />
-              </button>
-            </div>
+            {/* Only show add item input if no template is selected */}
+            {!selectedTemplateId && (
+              <div className="flex items-center mb-6">
+                <input
+                  type="text"
+                  id="newChecklistItem"
+                  name="newChecklistItem"
+                  value={newChecklistItem}
+                  onChange={(e) => setNewChecklistItem(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChecklistItem())}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Add new checklist item..."
+                />
+                <button
+                  type="button"
+                  onClick={handleAddChecklistItem}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-r-lg hover:bg-indigo-700"
+                >
+                  <FiPlus />
+                </button>
+              </div>
+            )}
           </div>
           
           <div className="flex justify-end space-x-4">

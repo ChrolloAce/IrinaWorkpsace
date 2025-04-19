@@ -342,4 +342,101 @@ export const sampleClientBranches: ClientBranch[] = [
     isMainLocation: true,
     createdAt: '2023-05-10',
   },
+];
+
+// Add sample checklist templates
+export const sampleChecklistTemplates = [
+  {
+    id: 'template1',
+    name: 'Standard Construction Permit',
+    description: 'Basic checklist for construction permits',
+    permitType: 'Construction',
+    items: [
+      {
+        id: 'titem1',
+        title: 'Building Permit Application Form',
+        price: 200,
+        order: 1
+      },
+      {
+        id: 'titem2',
+        title: 'Site Plan Submission',
+        price: 350,
+        order: 2
+      },
+      {
+        id: 'titem3',
+        title: 'Architectural Drawings Review',
+        price: 500,
+        order: 3
+      }
+    ],
+    createdAt: '2023-11-01'
+  },
+  {
+    id: 'template2',
+    name: 'Electrical Permit Checklist',
+    description: 'Complete checklist for electrical permits',
+    permitType: 'Electrical',
+    items: [
+      {
+        id: 'titem4',
+        title: 'Electrical Permit Application',
+        price: 150,
+        order: 1
+      },
+      {
+        id: 'titem5',
+        title: 'Electrical Load Calculations',
+        price: 200,
+        order: 2
+      },
+      {
+        id: 'titem6',
+        title: 'Electrical Plans Review',
+        price: 300,
+        order: 3
+      },
+      {
+        id: 'titem7',
+        title: 'On-site Inspection',
+        price: 250,
+        order: 4
+      }
+    ],
+    createdAt: '2023-11-15'
+  },
+  {
+    id: 'template3',
+    name: 'Renovation Permit Checklist',
+    description: 'Checklist for renovation projects',
+    permitType: 'Renovation',
+    items: [
+      {
+        id: 'titem8',
+        title: 'Renovation Permit Application',
+        price: 175,
+        order: 1
+      },
+      {
+        id: 'titem9',
+        title: 'Scope of Work Documentation',
+        price: 200,
+        order: 2
+      },
+      {
+        id: 'titem10',
+        title: 'Contractor Information Submission',
+        price: 100,
+        order: 3
+      },
+      {
+        id: 'titem11',
+        title: 'Final Inspection',
+        price: 225,
+        order: 4
+      }
+    ],
+    createdAt: '2023-12-01'
+  }
 ]; 

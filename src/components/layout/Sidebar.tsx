@@ -7,7 +7,6 @@ import {
   FiHome, 
   FiUsers, 
   FiFileText, 
-  FiCalendar, 
   FiCheckSquare,
   FiSettings,
   FiMenu,
@@ -71,12 +70,6 @@ export default function Sidebar() {
       icon: <FiFileText size={18} />, 
       label: 'Permits',
       active: pathname === '/permits' || pathname.startsWith('/permits/')
-    },
-    { 
-      href: '/calendar', 
-      icon: <FiCalendar size={18} />, 
-      label: 'Calendar',
-      active: pathname === '/calendar'
     },
     { 
       href: '/checklists', 

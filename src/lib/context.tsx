@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Client, Permit, ChecklistItem, PermitStatus, ClientBranch } from './types';
-import { sampleClients, samplePermits, sampleChecklistItems, generatePermitNumber, sampleClientBranches } from './data';
+import { Client, Permit, ChecklistItem, PermitStatus, ClientBranch, ChecklistTemplate, TemplateItem } from './types';
+import { sampleClients, samplePermits, sampleChecklistItems, generatePermitNumber, sampleClientBranches, sampleChecklistTemplates } from './data';
 import { generateId, getTodayFormatted, calculateProgress } from './utils';
 
 // Define the context shape
@@ -12,6 +12,7 @@ interface AppContextType {
   permits: Permit[];
   checklistItems: ChecklistItem[];
   clientBranches: ClientBranch[];
+  checklistTemplates: ChecklistTemplate[];
   
   // Client operations
   addClient: (client: Omit<Client, 'id' | 'createdAt'>) => string;
@@ -40,6 +41,13 @@ interface AppContextType {
   deleteChecklistItem: (id: string) => void;
   getPermitChecklistItems: (permitId: string) => ChecklistItem[];
   getChecklistProgress: (permitId: string) => number;
+  
+  // Checklist template operations
+  addChecklistTemplate: (template: Omit<ChecklistTemplate, 'id' | 'createdAt'>) => string;
+  updateChecklistTemplate: (id: string, data: Partial<ChecklistTemplate>) => void;
+  deleteChecklistTemplate: (id: string) => void;
+  getChecklistTemplateById: (id: string) => ChecklistTemplate | undefined;
+  applyTemplateToPermit: (templateId: string, permitId: string) => void;
   
   // Dashboard operations
   getOpenPermits: () => Permit[];
@@ -114,6 +122,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return sampleClientBranches;
   });
 
+  const [checklistTemplates, setChecklistTemplates] = useState<ChecklistTemplate[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedTemplates = localStorage.getItem('checklistTemplates');
+      return storedTemplates ? JSON.parse(storedTemplates) : sampleChecklistTemplates;
+    }
+    return sampleChecklistTemplates;
+  });
+
   // Save data to localStorage when it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -121,8 +137,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('permits', JSON.stringify(permits));
       localStorage.setItem('checklistItems', JSON.stringify(checklistItems));
       localStorage.setItem('clientBranches', JSON.stringify(clientBranches));
+      localStorage.setItem('checklistTemplates', JSON.stringify(checklistTemplates));
     }
-  }, [clients, permits, checklistItems, clientBranches]);
+  }, [clients, permits, checklistItems, clientBranches, checklistTemplates]);
 
   // Client operations
   const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>) => {
@@ -364,6 +381,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return calculateProgress(permitItems);
   };
 
+  // Checklist template operations
+  const addChecklistTemplate = (templateData: Omit<ChecklistTemplate, 'id' | 'createdAt'>) => {
+    const id = generateId();
+    const newTemplate: ChecklistTemplate = {
+      ...templateData,
+      id,
+      createdAt: getTodayFormatted(),
+    };
+    setChecklistTemplates([...checklistTemplates, newTemplate]);
+    return id;
+  };
+
+  const updateChecklistTemplate = (id: string, data: Partial<ChecklistTemplate>) => {
+    setChecklistTemplates(prevTemplates =>
+      prevTemplates.map(template =>
+        template.id === id ? { ...template, ...data } : template
+      )
+    );
+  };
+
+  const deleteChecklistTemplate = (id: string) => {
+    setChecklistTemplates(prevTemplates => 
+      prevTemplates.filter(template => template.id !== id)
+    );
+  };
+
+  const getChecklistTemplateById = (id: string) => {
+    return checklistTemplates.find(template => template.id === id);
+  };
+
+  const applyTemplateToPermit = (templateId: string, permitId: string) => {
+    const template = checklistTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    
+    // Create checklist items for each template item
+    const newItems: ChecklistItem[] = [];
+    
+    template.items.forEach(item => {
+      const newItem: ChecklistItem = {
+        id: generateId(),
+        permitId,
+        title: item.title,
+        completed: false,
+        price: item.price,
+        createdAt: getTodayFormatted()
+      };
+      newItems.push(newItem);
+    });
+    
+    // Add the new items to the checklist
+    setChecklistItems(prevItems => [...prevItems, ...newItems]);
+    
+    // Update permit progress
+    const progress = calculateProgress(newItems);
+    updatePermit(permitId, { progress });
+  };
+
   // Dashboard operations
   const getOpenPermits = () => {
     // Get permits that are not approved or expired
@@ -383,6 +457,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         permits,
         checklistItems,
         clientBranches,
+        checklistTemplates,
         
         // Client operations
         addClient,
@@ -411,6 +486,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteChecklistItem,
         getPermitChecklistItems,
         getChecklistProgress,
+        
+        // Checklist template operations
+        addChecklistTemplate,
+        updateChecklistTemplate,
+        deleteChecklistTemplate,
+        getChecklistTemplateById,
+        applyTemplateToPermit,
         
         // Dashboard operations
         getOpenPermits,

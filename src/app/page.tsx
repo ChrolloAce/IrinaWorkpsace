@@ -126,7 +126,7 @@ export default function Home() {
   return (
     <DashboardLayout title="Dashboard">
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="dashboard-grid mb-6">
         <StatsCard title="Total Permits" value={totalPermits.toString()} percentage="10%" color="blue" />
         <StatsCard title="Pending Approval" value={pendingPermits.toString()} percentage="5%" trend="down" color="purple" />
         <StatsCard title="Active Clients" value={activeClients.toString()} percentage="15%" color="green" />
@@ -136,7 +136,7 @@ export default function Home() {
       {/* Quick Actions */}
       <div className="mb-6">
         <h2 className="text-lg font-medium mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <ActionButton 
             icon={<FiPlus size={20} />} 
             label="New Permit" 
@@ -155,75 +155,82 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Open Permits */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium">Open Permits</h2>
-          <Link href="/permits" className="text-sm text-indigo-600">View All</Link>
-        </div>
-        <div>
-          {openPermits.length === 0 ? (
-            <div className="card p-6 text-center text-gray-500">
-              No open permits found. Create a new permit to get started.
+      {/* Dashboard content area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Open Permits - takes up 2/3 on larger screens */}
+        <div className="lg:col-span-2">
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium">Open Permits</h2>
+              <Link href="/permits" className="text-sm text-indigo-600">View All</Link>
             </div>
-          ) : (
-            openPermits.map(({ permit, client }) => (
-              <RecentPermitCard 
-                key={permit.id}
-                client={client?.name || 'Unknown Client'} 
-                title={permit.title} 
-                date={formatDate(permit.createdAt)} 
-                status={permit.status} 
-                permitNumber={permit.permitNumber}
-                permitId={permit.id}
-              />
-            ))
-          )}
+            <div>
+              {openPermits.length === 0 ? (
+                <div className="card p-6 text-center text-gray-500">
+                  No open permits found. Create a new permit to get started.
+                </div>
+              ) : (
+                openPermits.map(({ permit, client }) => (
+                  <RecentPermitCard 
+                    key={permit.id}
+                    client={client?.name || 'Unknown Client'} 
+                    title={permit.title} 
+                    date={formatDate(permit.createdAt)} 
+                    status={permit.status} 
+                    permitNumber={permit.permitNumber}
+                    permitId={permit.id}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Upcoming Deadlines */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium">Upcoming Deadlines</h2>
-          <Link href="/permits" className="text-sm text-indigo-600">View All</Link>
-        </div>
-        <div className="card">
-          <div className="space-y-4">
-            {permits
-              .filter(p => p.expiresAt)
-              .sort((a, b) => {
-                const dateA = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
-                const dateB = b.expiresAt ? new Date(b.expiresAt).getTime() : Infinity;
-                return dateA - dateB;
-              })
-              .slice(0, 3)
-              .map(permit => {
-                const client = clients.find(c => c.id === permit.clientId);
-                const today = new Date();
-                const expireDate = permit.expiresAt ? new Date(permit.expiresAt) : null;
-                const daysLeft = expireDate 
-                  ? Math.ceil((expireDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-                  : null;
-                
-                return (
-                  <div key={permit.id} className="flex justify-between items-center pb-3 border-b">
-                    <div>
-                      <div className="font-medium">{permit.title}</div>
-                      <div className="text-sm text-gray-500">
-                        {client?.name || 'Unknown Client'} • {daysLeft !== null ? `Due in ${daysLeft} days` : 'No deadline'}
+        {/* Upcoming Deadlines - takes up 1/3 on larger screens */}
+        <div>
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium">Upcoming Deadlines</h2>
+              <Link href="/permits" className="text-sm text-indigo-600">View All</Link>
+            </div>
+            <div className="card">
+              <div className="space-y-4">
+                {permits
+                  .filter(p => p.expiresAt)
+                  .sort((a, b) => {
+                    const dateA = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
+                    const dateB = b.expiresAt ? new Date(b.expiresAt).getTime() : Infinity;
+                    return dateA - dateB;
+                  })
+                  .slice(0, 3)
+                  .map(permit => {
+                    const client = clients.find(c => c.id === permit.clientId);
+                    const today = new Date();
+                    const expireDate = permit.expiresAt ? new Date(permit.expiresAt) : null;
+                    const daysLeft = expireDate 
+                      ? Math.ceil((expireDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                      : null;
+                    
+                    return (
+                      <div key={permit.id} className="flex justify-between items-center pb-3 border-b">
+                        <div>
+                          <div className="font-medium">{permit.title}</div>
+                          <div className="text-sm text-gray-500">
+                            {client?.name || 'Unknown Client'} • {daysLeft !== null ? `Due in ${daysLeft} days` : 'No deadline'}
+                          </div>
+                        </div>
+                        <Link href={`/permits/${permit.id}`} className="text-sm text-indigo-600">View Permit</Link>
                       </div>
-                    </div>
-                    <Link href={`/permits/${permit.id}`} className="text-sm text-indigo-600">View Permit</Link>
+                    );
+                  })
+                }
+                {permits.filter(p => p.expiresAt).length === 0 && (
+                  <div className="py-4 text-center text-gray-500">
+                    No upcoming deadlines found.
                   </div>
-                );
-              })
-            }
-            {permits.filter(p => p.expiresAt).length === 0 && (
-              <div className="py-4 text-center text-gray-500">
-                No upcoming deadlines found.
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

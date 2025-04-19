@@ -44,16 +44,8 @@ a {
 }
 
 @layer components {
-  .sidebar-item {
-    @apply flex items-center gap-3 px-4 py-3 text-sm text-gray-500 transition-colors rounded-lg hover:bg-gray-100;
-  }
-  
-  .sidebar-item.active {
-    @apply bg-indigo-50 text-indigo-600 font-medium;
-  }
-  
   .card {
-    @apply bg-white rounded-xl shadow-sm p-6;
+    @apply bg-white rounded-xl shadow-sm p-4 md:p-6;
   }
   
   .btn-primary {
@@ -66,5 +58,28 @@ a {
   
   .btn-danger {
     @apply bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2 rounded-lg transition-colors;
+  }
+  
+  .sidebar-item {
+    @apply flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors;
+  }
+  
+  .sidebar-item.active {
+    @apply bg-indigo-50 text-indigo-600 font-medium;
+  }
+  
+  .dashboard-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  @screen lg {
+    .sidebar-width {
+      width: 16rem; /* w-64 */
+    }
+    
+    .content-area {
+      width: calc(100% - 16rem);
+      margin-left: 16rem;
+    }
   }
 } 

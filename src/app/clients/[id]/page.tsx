@@ -287,8 +287,8 @@ export default function ClientDetailPage() {
         </div>
       )}
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-3">
           {/* Client details */}
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
             <h2 className="text-lg font-semibold mb-4">Client Details</h2>
@@ -310,7 +310,7 @@ export default function ClientDetailPage() {
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700 mb-1">
                       Contact Person
@@ -382,7 +382,7 @@ export default function ClientDetailPage() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
                         State
@@ -429,7 +429,7 @@ export default function ClientDetailPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Contact Person</p>
                     <p className="font-medium">{client.contactPerson || 'N/A'}</p>

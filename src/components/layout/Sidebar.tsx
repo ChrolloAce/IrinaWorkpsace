@@ -89,10 +89,11 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-20">
+      <div className="lg:hidden fixed top-4 left-4 z-30">
         <button 
           onClick={toggleSidebar}
           className="p-2 rounded-md bg-white shadow-md text-gray-600"
+          aria-label="Toggle sidebar"
         >
           {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
         </button>
@@ -101,13 +102,13 @@ export default function Sidebar() {
       {/* Overlay for mobile */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
           onClick={closeSidebar}
         />
       )}
       
       {/* Sidebar */}
-      <div className={`fixed lg:static inset-y-0 left-0 z-10 h-full w-64 border-r border-gray-100 bg-white flex flex-col transition-transform duration-300 ease-in-out transform ${
+      <aside className={`fixed lg:sticky top-0 inset-y-0 left-0 z-20 h-full lg:h-screen w-64 sidebar-width bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out transform ${
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <Logo />
@@ -134,7 +135,7 @@ export default function Sidebar() {
             onClick={closeSidebar}
           />
         </div>
-      </div>
+      </aside>
     </>
   );
 } 

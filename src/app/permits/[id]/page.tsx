@@ -154,6 +154,11 @@ export default function PermitDetailPage() {
         throw new Error('Client email is required to send the invoice');
       }
       
+      // Show loading indicator
+      setError(null);
+      const loadingMessage = 'Sending email, please wait...';
+      setError(loadingMessage);
+      
       // Generate email content
       const subject = `Invoice for ${permit.title} - ${permit.permitNumber}`;
       const text = `Please find attached the invoice for permit ${permit.permitNumber}.`;
@@ -168,14 +173,22 @@ export default function PermitDetailPage() {
       
       // Send the email
       const pdfPath = `invoice-${permitId.substring(0, 8)}.pdf`;
-      await sendInvoiceEmail(client.email, subject, text, html, pdfPath);
+      const result = await sendInvoiceEmail(client.email, subject, text, html, pdfPath);
       
       // Show success message
-      setShowInvoiceModal(false);
-      setInvoiceGenerated(false);
-    } catch (error) {
+      console.log('Email sent successfully:', result);
+      setError('Email sent successfully!');
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowInvoiceModal(false);
+        setInvoiceGenerated(false);
+        setError(null);
+      }, 2000);
+      
+    } catch (error: any) {
       console.error('Error sending invoice email:', error);
-      setError('Failed to send invoice email. Please try again.');
+      setError(`Failed to send invoice email: ${error.message || 'Unknown error'}`);
     }
   };
   

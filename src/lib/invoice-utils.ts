@@ -180,12 +180,10 @@ export async function sendInvoiceEmail(
   html: string,
   pdfPath: string
 ): Promise<any> {
-  // This is a mock implementation that would be replaced with actual Nodemailer setup
   console.log(`Sending email to ${to} with subject: ${subject}`);
   console.log(`Attaching PDF: ${pdfPath}`);
   
-  // In a real implementation, you'd set up Nodemailer like this:
-  /*
+  // Set up Nodemailer
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
@@ -211,11 +209,4 @@ export async function sendInvoiceEmail(
   });
 
   return info;
-  */
-  
-  // Mock response for demo purposes
-  return {
-    messageId: `mock-${Math.random().toString(36).substring(2, 11)}`,
-    success: true,
-  };
 } 

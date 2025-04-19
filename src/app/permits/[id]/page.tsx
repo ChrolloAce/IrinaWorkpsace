@@ -8,7 +8,7 @@ import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle
 import { useAppContext } from '@/lib/context';
 import { formatDate } from '@/lib/utils';
 import PermitChecklist from '@/components/permits/PermitChecklist';
-import { generatePdfInvoice, sendInvoiceEmail } from '@/lib/invoice-utils';
+import { generatePdfInvoice, sendInvoiceEmail, createInvoiceData } from '@/lib/invoice-utils';
 
 export default function PermitDetailPage() {
   const params = useParams();
@@ -130,11 +130,17 @@ export default function PermitDetailPage() {
     try {
       setInvoiceGenerated(true);
       
-      // Generate PDF from the invoice content
-      const fileName = `invoice-${permitId.substring(0, 8)}.pdf`;
-      await generatePdfInvoice('invoice-content', fileName);
+      if (!client) {
+        throw new Error('Client information is required for invoice generation');
+      }
       
-      // Show success message or continue to email option
+      // Create invoice data
+      const invoiceData = createInvoiceData(permit, client, permitChecklists);
+      
+      // Generate PDF with the invoice data
+      const fileName = `invoice-${permitId.substring(0, 8)}.pdf`;
+      await generatePdfInvoice(invoiceData, fileName);
+      
     } catch (error) {
       console.error('Error generating invoice:', error);
       setError('Failed to generate invoice. Please try again.');
@@ -474,12 +480,12 @@ export default function PermitDetailPage() {
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
-            <h3 className="text-xl font-medium mb-4">Invoice Generator</h3>
+            <h3 className="text-xl font-medium mb-4">Invoice Preview</h3>
             <div className="mb-6">
-              <div id="invoice-content" className="border-b pb-4 mb-4">
+              <div className="border-b pb-4 mb-4">
                 <div className="flex justify-between mb-2">
                   <div>
-                    <h4 className="font-semibold text-lg">Permit Management</h4>
+                    <h4 className="font-semibold text-lg">Permit Management System</h4>
                     <p className="text-gray-500 text-sm">Invoice #{permitId.substring(0, 8).toUpperCase()}</p>
                     <p className="text-gray-500 text-sm">Date: {new Date().toLocaleDateString()}</p>
                   </div>
@@ -537,6 +543,7 @@ export default function PermitDetailPage() {
                 
                 <div className="bg-gray-50 p-4 rounded text-sm">
                   <p className="font-medium mb-1">Notes:</p>
+                  <p>This is just a preview. The generated PDF will include all the details shown here.</p>
                   <p>Payment due within 30 days. Thank you for your business!</p>
                 </div>
               </div>

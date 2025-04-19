@@ -1,44 +1,136 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import nodemailer from 'nodemailer';
 import { ChecklistItem, Client, Permit } from './types';
 
 /**
- * Generates a PDF invoice from a DOM element
- * @param elementId - ID of the DOM element to convert to PDF
+ * Generates a PDF invoice directly using jsPDF
+ * @param invoiceData - Invoice data to render in the PDF
  * @param fileName - Name of the generated PDF file
  * @returns Promise with the file path
  */
-export async function generatePdfInvoice(elementId: string, fileName: string): Promise<string> {
+export async function generatePdfInvoice(
+  invoiceData: ReturnType<typeof createInvoiceData>,
+  fileName: string
+): Promise<string> {
   try {
-    const element = document.getElementById(elementId);
-    if (!element) throw new Error('Element not found');
-
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      logging: false,
-      useCORS: true,
+    // Create a new PDF document
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
     });
-
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgData = canvas.toDataURL('image/png');
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 297; // A4 height in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    
+    // Set initial position and line height
+    let y = 20;
+    const lineHeight = 7;
+    const margin = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const contentWidth = pageWidth - 2 * margin;
+    
+    // Add company header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Permit Management System', margin, y);
+    y += lineHeight * 1.5;
+    
+    // Add invoice info
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Invoice #: ${invoiceData.id}`, margin, y);
+    y += lineHeight;
+    doc.text(`Date: ${invoiceData.date}`, margin, y);
+    y += lineHeight;
+    doc.text(`Due Date: ${invoiceData.dueDate}`, margin, y);
+    y += lineHeight * 1.5;
+    
+    // Add client info
+    doc.setFont('helvetica', 'bold');
+    doc.text('Billed To:', margin, y);
+    y += lineHeight;
+    doc.setFont('helvetica', 'normal');
+    doc.text(invoiceData.client.name, margin, y);
+    y += lineHeight;
+    if (invoiceData.client.email) {
+      doc.text(invoiceData.client.email, margin, y);
+      y += lineHeight;
     }
-
-    pdf.save(fileName);
+    if (invoiceData.client.address) {
+      doc.text(`${invoiceData.client.address}, ${invoiceData.client.city}, ${invoiceData.client.state} ${invoiceData.client.zipCode}`, margin, y);
+      y += lineHeight;
+    }
+    y += lineHeight;
+    
+    // Add permit info
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Permit: ${invoiceData.permit.title}`, margin, y);
+    y += lineHeight;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Permit Number: ${invoiceData.permit.permitNumber}`, margin, y);
+    y += lineHeight;
+    doc.text(`Location: ${invoiceData.permit.location}`, margin, y);
+    y += lineHeight * 1.5;
+    
+    // Add table header
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, y, contentWidth, lineHeight, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text('Description', margin + 2, y + lineHeight - 2);
+    doc.text('Status', margin + contentWidth * 0.6, y + lineHeight - 2);
+    doc.text('Amount', margin + contentWidth * 0.85, y + lineHeight - 2);
+    y += lineHeight;
+    
+    // Add table rows
+    doc.setFont('helvetica', 'normal');
+    
+    invoiceData.items.forEach((item, index) => {
+      // Add new page if needed
+      if (y > doc.internal.pageSize.getHeight() - 40) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      // Alternate row background for better readability
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 248, 248);
+        doc.rect(margin, y, contentWidth, lineHeight, 'F');
+      }
+      
+      // Add item data
+      doc.text(item.title, margin + 2, y + lineHeight - 2);
+      doc.text(item.completed ? 'Completed' : 'In Progress', margin + contentWidth * 0.6, y + lineHeight - 2);
+      doc.text(`$${(item.price || 0).toFixed(2)}`, margin + contentWidth * 0.85, y + lineHeight - 2);
+      y += lineHeight;
+    });
+    
+    // Add table footer with totals
+    y += lineHeight / 2;
+    doc.line(margin, y, margin + contentWidth, y);
+    y += lineHeight;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total Amount:', margin + contentWidth * 0.6, y);
+    doc.text(`$${invoiceData.totalCost.toFixed(2)}`, margin + contentWidth * 0.85, y);
+    y += lineHeight;
+    
+    doc.text('Completed Work:', margin + contentWidth * 0.6, y);
+    doc.text(`$${invoiceData.completedCost.toFixed(2)}`, margin + contentWidth * 0.85, y);
+    y += lineHeight;
+    
+    doc.setFillColor(230, 230, 250);
+    doc.rect(margin + contentWidth * 0.6 - 2, y - lineHeight + 2, contentWidth * 0.4, lineHeight, 'F');
+    doc.text('Balance Due:', margin + contentWidth * 0.6, y);
+    doc.text(`$${invoiceData.balanceDue.toFixed(2)}`, margin + contentWidth * 0.85, y);
+    y += lineHeight * 2;
+    
+    // Add notes
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, y, contentWidth, lineHeight * 4, 'F');
+    doc.text('Notes:', margin + 2, y + lineHeight - 2);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Payment due within 30 days. Thank you for your business!', margin + 2, y + lineHeight * 2 - 2);
+    
+    // Save the PDF
+    doc.save(fileName);
     return fileName;
   } catch (error) {
     console.error('Error generating PDF:', error);

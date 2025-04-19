@@ -1,21 +1,7 @@
 import { Client, Permit, ChecklistItem, PermitStatus } from './types';
+import { formatDate, generateId, getTodayFormatted, calculateProgress } from './utils';
 
-// Generate a simple ID (for demo purposes only)
-export const generateId = (): string => {
-  return Math.random().toString(36).substring(2, 9);
-};
-
-// Format date to YYYY-MM-DD
-export const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0];
-};
-
-// Get today's date formatted
-export const getTodayFormatted = (): string => {
-  return formatDate(new Date());
-};
-
-// Get date X months from today
+// Get date X months from now
 export const getDateMonthsFromNow = (months: number): string => {
   const date = new Date();
   date.setMonth(date.getMonth() + months);
@@ -28,13 +14,6 @@ export const generatePermitNumber = (): string => {
   const year = new Date().getFullYear();
   const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
   return `${prefix}-${year}-${randomNum}`;
-};
-
-// Calculate progress based on checklist items
-export const calculateProgress = (checklistItems: ChecklistItem[]): number => {
-  if (checklistItems.length === 0) return 0;
-  const completedItems = checklistItems.filter(item => item.completed).length;
-  return Math.round((completedItems / checklistItems.length) * 100);
 };
 
 // Sample clients data

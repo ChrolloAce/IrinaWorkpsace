@@ -2,16 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Client, Permit, ChecklistItem, PermitStatus } from './types';
-import { 
-  sampleClients, 
-  samplePermits, 
-  sampleChecklistItems, 
-  generateId, 
-  getTodayFormatted, 
-  getDateMonthsFromNow,
-  generatePermitNumber,
-  calculateProgress
-} from './data';
+import { sampleClients, samplePermits, sampleChecklistItems, generatePermitNumber } from './data';
+import { generateId, getTodayFormatted, calculateProgress } from './utils';
 
 // Define the context shape
 interface AppContextType {

@@ -170,7 +170,7 @@ export default function ClientsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
-                          <Link href={`/clients/${client.id}/edit`} className="text-indigo-600 hover:text-indigo-900">
+                          <Link href={`/clients/${client.id}`} className="text-indigo-600 hover:text-indigo-900">
                             <FiEdit2 size={16} />
                           </Link>
                           <button 

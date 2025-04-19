@@ -40,6 +40,9 @@ interface AppContextType {
   deleteChecklistItem: (id: string) => void;
   getPermitChecklistItems: (permitId: string) => ChecklistItem[];
   getChecklistProgress: (permitId: string) => number;
+  
+  // Dashboard operations
+  getOpenPermits: () => Permit[];
 }
 
 // Create the context
@@ -47,6 +50,37 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Context provider component
 export function AppProvider({ children }: { children: ReactNode }) {
+  // Initialize permit numbering - ensure it's sequential across app restarts
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Update the permit counter to be the highest existing number + 1
+      const storedPermits = localStorage.getItem('permits');
+      if (storedPermits) {
+        const permits = JSON.parse(storedPermits) as Permit[];
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        
+        // Find the highest permit number for the current year
+        let highestCounter = 0;
+        permits.forEach(permit => {
+          // Parse permit numbers in format YY-XXX
+          if (permit.permitNumber && permit.permitNumber.startsWith(currentYear)) {
+            const counterPart = permit.permitNumber.split('-')[1];
+            if (counterPart) {
+              const counter = parseInt(counterPart, 10);
+              if (!isNaN(counter) && counter > highestCounter) {
+                highestCounter = counter;
+              }
+            }
+          }
+        });
+        
+        // Store the highest counter in localStorage
+        localStorage.setItem('permitCounter', highestCounter.toString());
+        localStorage.setItem('permitYear', currentYear);
+      }
+    }
+  }, []);
+
   // Load data from localStorage or use sample data
   const [clients, setClients] = useState<Client[]>(() => {
     if (typeof window !== 'undefined') {
@@ -330,6 +364,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return calculateProgress(permitItems);
   };
 
+  // Dashboard operations
+  const getOpenPermits = () => {
+    // Get permits that are not approved or expired
+    return permits.filter(
+      permit => permit.status !== 'approved' && permit.status !== 'expired'
+    ).sort((a, b) => {
+      // Sort by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -366,6 +411,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteChecklistItem,
         getPermitChecklistItems,
         getChecklistProgress,
+        
+        // Dashboard operations
+        getOpenPermits,
       }}
     >
       {children}

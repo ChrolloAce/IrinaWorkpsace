@@ -1,9 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from './dashboard-layout';
 import Link from 'next/link';
-import { FiPlus, FiFileText, FiCheckSquare, FiUsers } from 'react-icons/fi';
+import { FiPlus, FiFileText, FiCheckSquare, FiUsers, FiClock, FiChevronRight } from 'react-icons/fi';
+import { useAppContext } from '@/lib/context';
+import { formatDate } from '@/lib/utils';
 
 // Stats Card Component
 const StatsCard = ({ 
@@ -56,41 +58,79 @@ const RecentPermitCard = ({
   client, 
   title, 
   date, 
-  status 
+  status,
+  permitNumber,
+  permitId
 }: { 
   client: string; 
   title: string; 
   date: string; 
-  status: 'pending' | 'approved' | 'in-progress'; 
+  status: string;
+  permitNumber: string;
+  permitId: string;
 }) => {
-  const statusClasses = {
-    'pending': 'bg-yellow-50 text-yellow-700',
+  const statusClasses: Record<string, string> = {
+    'draft': 'bg-gray-50 text-gray-700',
+    'submitted': 'bg-blue-50 text-blue-700',
+    'in-progress': 'bg-yellow-50 text-yellow-700',
     'approved': 'bg-green-50 text-green-700',
-    'in-progress': 'bg-blue-50 text-blue-700',
+    'expired': 'bg-purple-50 text-purple-700',
   };
 
   return (
-    <div className="card flex justify-between items-center mb-3">
-      <div>
-        <div className="font-medium">{title}</div>
-        <div className="text-sm text-gray-500">{client} • {date}</div>
-      </div>
-      <div className={`px-3 py-1 rounded-full text-xs ${statusClasses[status]}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+    <div className="card flex justify-between items-center mb-3 p-4 hover:bg-gray-50 transition-colors">
+      <div className="flex-1">
+        <Link href={`/permits/${permitId}`} className="flex justify-between items-center">
+          <div>
+            <div className="font-medium">{title}</div>
+            <div className="text-sm text-gray-500">{client} • {date}</div>
+          </div>
+          <div className="flex items-center">
+            <div className={`px-3 py-1 rounded-full text-xs ${statusClasses[status] || 'bg-gray-50 text-gray-700'} mr-3`}>
+              {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+            </div>
+            <div className="text-indigo-700 font-medium text-sm">{permitNumber}</div>
+            <FiChevronRight className="ml-2 text-gray-400" />
+          </div>
+        </Link>
       </div>
     </div>
   );
 };
 
 export default function Home() {
+  const { permits, clients, getOpenPermits } = useAppContext();
+  const [openPermits, setOpenPermits] = useState<
+    Array<{ permit: typeof permits[0]; client: typeof clients[0] | undefined }>
+  >([]);
+  
+  // Fetch open permits on load
+  useEffect(() => {
+    const open = getOpenPermits().slice(0, 5); // Get top 5 open permits
+    
+    // Get client info for each permit
+    const withClients = open.map(permit => ({
+      permit,
+      client: clients.find(c => c.id === permit.clientId)
+    }));
+    
+    setOpenPermits(withClients);
+  }, [getOpenPermits, clients]);
+  
+  // Count stats
+  const totalPermits = permits.length;
+  const pendingPermits = permits.filter(p => p.status === 'submitted' || p.status === 'draft').length;
+  const activeClients = clients.length;
+  const expiredPermits = permits.filter(p => p.status === 'expired').length;
+
   return (
     <DashboardLayout title="Dashboard">
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatsCard title="Total Permits" value="34" percentage="10%" color="blue" />
-        <StatsCard title="Pending Approval" value="12" percentage="5%" trend="down" color="purple" />
-        <StatsCard title="Active Clients" value="28" percentage="15%" color="green" />
-        <StatsCard title="Expired Permits" value="7" percentage="3%" trend="down" color="red" />
+        <StatsCard title="Total Permits" value={totalPermits.toString()} percentage="10%" color="blue" />
+        <StatsCard title="Pending Approval" value={pendingPermits.toString()} percentage="5%" trend="down" color="purple" />
+        <StatsCard title="Active Clients" value={activeClients.toString()} percentage="15%" color="green" />
+        <StatsCard title="Expired Permits" value={expiredPermits.toString()} percentage="3%" trend="down" color="red" />
       </div>
 
       {/* Quick Actions */}
@@ -108,38 +148,37 @@ export default function Home() {
             href="/clients/new" 
           />
           <ActionButton 
-            icon={<FiCheckSquare size={20} />} 
-            label="Create Checklist" 
-            href="/checklists/new" 
+            icon={<FiClock size={20} />} 
+            label="View All Permits" 
+            href="/permits" 
           />
         </div>
       </div>
 
-      {/* Recent Permits */}
+      {/* Open Permits */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium">Recent Permits</h2>
+          <h2 className="text-lg font-medium">Open Permits</h2>
           <Link href="/permits" className="text-sm text-indigo-600">View All</Link>
         </div>
         <div>
-          <RecentPermitCard 
-            client="Bank of America" 
-            title="Mall of Georgia Renovations" 
-            date="Aug 3, 2023" 
-            status="in-progress" 
-          />
-          <RecentPermitCard 
-            client="Bank of America" 
-            title="Ormond Beach Bollards" 
-            date="Aug 21, 2023" 
-            status="pending" 
-          />
-          <RecentPermitCard 
-            client="First National Bank" 
-            title="Parking Lot Resurfacing" 
-            date="Jul 15, 2023" 
-            status="approved" 
-          />
+          {openPermits.length === 0 ? (
+            <div className="card p-6 text-center text-gray-500">
+              No open permits found. Create a new permit to get started.
+            </div>
+          ) : (
+            openPermits.map(({ permit, client }) => (
+              <RecentPermitCard 
+                key={permit.id}
+                client={client?.name || 'Unknown Client'} 
+                title={permit.title} 
+                date={formatDate(permit.createdAt)} 
+                status={permit.status} 
+                permitNumber={permit.permitNumber}
+                permitId={permit.id}
+              />
+            ))
+          )}
         </div>
       </div>
 
@@ -147,31 +186,44 @@ export default function Home() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">Upcoming Deadlines</h2>
-          <Link href="/calendar" className="text-sm text-indigo-600">View Calendar</Link>
+          <Link href="/permits" className="text-sm text-indigo-600">View All</Link>
         </div>
         <div className="card">
           <div className="space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b">
-              <div>
-                <div className="font-medium">Mall of Georgia - Permit Renewal</div>
-                <div className="text-sm text-gray-500">Due in 5 days</div>
+            {permits
+              .filter(p => p.expiresAt)
+              .sort((a, b) => {
+                const dateA = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
+                const dateB = b.expiresAt ? new Date(b.expiresAt).getTime() : Infinity;
+                return dateA - dateB;
+              })
+              .slice(0, 3)
+              .map(permit => {
+                const client = clients.find(c => c.id === permit.clientId);
+                const today = new Date();
+                const expireDate = permit.expiresAt ? new Date(permit.expiresAt) : null;
+                const daysLeft = expireDate 
+                  ? Math.ceil((expireDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                  : null;
+                
+                return (
+                  <div key={permit.id} className="flex justify-between items-center pb-3 border-b">
+                    <div>
+                      <div className="font-medium">{permit.title}</div>
+                      <div className="text-sm text-gray-500">
+                        {client?.name || 'Unknown Client'} • {daysLeft !== null ? `Due in ${daysLeft} days` : 'No deadline'}
+                      </div>
+                    </div>
+                    <Link href={`/permits/${permit.id}`} className="text-sm text-indigo-600">View Permit</Link>
+                  </div>
+                );
+              })
+            }
+            {permits.filter(p => p.expiresAt).length === 0 && (
+              <div className="py-4 text-center text-gray-500">
+                No upcoming deadlines found.
               </div>
-              <Link href="/permits/1" className="text-sm text-indigo-600">View Permit</Link>
-            </div>
-            <div className="flex justify-between items-center pb-3 border-b">
-              <div>
-                <div className="font-medium">Ormond Beach - Document Submission</div>
-                <div className="text-sm text-gray-500">Due in 10 days</div>
-              </div>
-              <Link href="/permits/2" className="text-sm text-indigo-600">View Permit</Link>
-            </div>
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="font-medium">Quarterly Compliance Review</div>
-                <div className="text-sm text-gray-500">Due in 14 days</div>
-              </div>
-              <Link href="/calendar" className="text-sm text-indigo-600">View Details</Link>
-            </div>
+            )}
           </div>
         </div>
       </div>

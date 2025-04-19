@@ -53,14 +53,18 @@ a {
   }
   
   .card {
-    @apply bg-white rounded-2xl p-5 shadow-sm border border-gray-50;
+    @apply bg-white rounded-xl shadow-sm p-6;
   }
   
   .btn-primary {
-    @apply bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors;
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors;
   }
   
   .btn-secondary {
-    @apply bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 hover:bg-gray-50 transition-colors;
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors;
+  }
+  
+  .btn-danger {
+    @apply bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2 rounded-lg transition-colors;
   }
 } 

@@ -8,12 +8,49 @@ export const getDateMonthsFromNow = (months: number): string => {
   return formatDate(date);
 };
 
-// Generate permit number
+// Track the current year and permit counter
+let currentPermitYear: number | null = null;
+let permitCounter: number = 0;
+
+// Generate permit number in format YY-XXX (e.g., 25-001)
 export const generatePermitNumber = (): string => {
-  const prefix = 'PERM';
-  const year = new Date().getFullYear();
-  const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `${prefix}-${year}-${randomNum}`;
+  const currentYear = new Date().getFullYear();
+  // Get last 2 digits of year
+  const yearSuffix = currentYear.toString().slice(-2);
+  
+  let counter = 0;
+  // Try to get counter from localStorage
+  if (typeof window !== 'undefined') {
+    const storedYear = localStorage.getItem('permitYear');
+    const storedCounter = localStorage.getItem('permitCounter');
+    
+    // If the year changed, reset counter
+    if (storedYear !== yearSuffix) {
+      counter = 1;
+      localStorage.setItem('permitYear', yearSuffix);
+    } else if (storedCounter) {
+      // Otherwise use the stored counter + 1
+      counter = parseInt(storedCounter, 10) + 1;
+    } else {
+      counter = 1;
+    }
+    
+    // Store the updated counter
+    localStorage.setItem('permitCounter', counter.toString());
+  } else {
+    // Fallback for SSR
+    if (currentPermitYear !== currentYear) {
+      currentPermitYear = currentYear;
+      permitCounter = 0;
+    }
+    counter = ++permitCounter;
+  }
+  
+  // Format counter as 3-digit number with leading zeros
+  const counterFormatted = counter.toString().padStart(3, '0');
+  
+  // Return in format YY-XXX
+  return `${yearSuffix}-${counterFormatted}`;
 };
 
 // Sample clients data
@@ -84,7 +121,7 @@ export const samplePermits: Permit[] = [
     progress: 65,
     createdAt: '2023-07-30',
     expiresAt: '2024-07-30',
-    permitNumber: 'PERM-2023-0730',
+    permitNumber: '23-001',
   },
   {
     id: '2',
@@ -98,7 +135,7 @@ export const samplePermits: Permit[] = [
     progress: 30,
     createdAt: '2023-08-21',
     expiresAt: '2024-08-21',
-    permitNumber: 'PERM-2023-0821',
+    permitNumber: '23-002',
   },
   {
     id: '3',
@@ -112,7 +149,7 @@ export const samplePermits: Permit[] = [
     progress: 100,
     createdAt: '2023-07-15',
     expiresAt: '2024-07-15',
-    permitNumber: 'PERM-2023-7150',
+    permitNumber: '23-003',
   },
   {
     id: '4',
@@ -126,7 +163,7 @@ export const samplePermits: Permit[] = [
     progress: 100,
     createdAt: '2022-05-10',
     expiresAt: '2023-05-10',
-    permitNumber: 'PERM-2022-5101',
+    permitNumber: '22-001',
   },
   {
     id: '5',
@@ -140,7 +177,7 @@ export const samplePermits: Permit[] = [
     progress: 10,
     createdAt: '2023-09-05',
     expiresAt: null,
-    permitNumber: 'PERM-2023-9050',
+    permitNumber: '23-004',
   },
 ];
 

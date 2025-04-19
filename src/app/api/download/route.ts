@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Define the cache structure in global scope
-declare global {
-  var __PDF_CACHE: {
-    [key: string]: {
-      fileName: string;
-      contentType: string;
-      data: string;
-      createdAt: string;
-    }
-  };
-}
+import { getPdfData } from '@/lib/server-state';
 
 // Force Edge runtime to maintain consistent global state
 export const runtime = 'edge';
@@ -26,12 +15,12 @@ export async function GET(request: NextRequest) {
     }
     
     // Check if the PDF exists in our cache
-    if (!global.__PDF_CACHE || !global.__PDF_CACHE[pdfId]) {
+    const pdfData = await getPdfData(pdfId);
+    
+    if (!pdfData) {
       console.error(`PDF not found in cache: ${pdfId}`);
       return new NextResponse('PDF not found or expired', { status: 404 });
     }
-    
-    const pdfData = global.__PDF_CACHE[pdfId];
     
     // Log the found PDF data for debugging
     console.log(`Found PDF in cache: ${pdfId}, filename: ${pdfData.fileName}`);

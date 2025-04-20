@@ -1,6 +1,6 @@
 'use server';
 
-import { generatePdfProposal, sendProposalEmail, createNewProposal } from '@/lib/proposal-utils';
+import { generatePdfProposal, sendProposalEmail } from '@/lib/proposal-utils';
 import { Client, Permit, Proposal, ProposalItem } from '@/lib/types';
 import { storePdfData } from '@/lib/server-state';
 

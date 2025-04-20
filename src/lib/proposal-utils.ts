@@ -1,7 +1,8 @@
+'use server';
+
 import jsPDF from 'jspdf';
 import nodemailer from 'nodemailer';
 import { Client, Permit, Proposal, ProposalItem } from './types';
-import 'server-only';
 
 // Server-side only imports
 import path from 'path';

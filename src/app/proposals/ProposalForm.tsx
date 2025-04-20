@@ -21,7 +21,7 @@ import {
 import { useToast } from '@/components/ui';
 import { generateProposalAction, sendProposalEmailAction } from '@/app/actions/proposal-actions';
 import type { Client, Permit, Proposal, ProposalItem, ProposalStatus } from '@/lib/types';
-import { createNewProposal } from '@/lib/proposal-utils';
+import { createNewProposal } from '@/lib/proposal-client';
 import { generateId } from '@/lib/utils';
 import { useAppContext } from '@/lib/context';
 import Link from 'next/link';

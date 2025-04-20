@@ -12,6 +12,10 @@ const nextConfig = {
     // Ignore ESLint errors when building
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    serverActions: true,
+    serverComponentsExternalPackages: ['nodemailer', 'jspdf'],
+  },
   webpack: (config, { isServer }) => {
     // Only bundle server-specific modules in server build
     if (!isServer) {

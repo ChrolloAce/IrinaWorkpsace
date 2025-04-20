@@ -52,4 +52,17 @@ export function getTodayFormatted(): string {
  */
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
-} 
+}
+
+/**
+ * Format a number as currency
+ * @param amount - Amount to format
+ * @returns Formatted currency string
+ */
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(amount);
+}; 

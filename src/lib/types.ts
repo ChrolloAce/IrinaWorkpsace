@@ -76,4 +76,33 @@ export type ChecklistTemplate = {
   permitType: string;
   items: TemplateItem[];
   createdAt: string;
+};
+
+// Proposal status type
+export type ProposalStatus = 'draft' | 'sent' | 'accepted' | 'declined';
+
+// Proposal type definition
+export type Proposal = {
+  id: string;
+  title: string;
+  clientId: string;
+  permitId?: string;
+  status: ProposalStatus;
+  date: string;
+  validUntil: string;
+  scope: string;
+  terms: string;
+  totalAmount: number;
+  items: ProposalItem[];
+  notes?: string;
+  createdAt: string;
+};
+
+// Proposal item type
+export type ProposalItem = {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
 }; 

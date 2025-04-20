@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Client, Permit, ChecklistItem, PermitStatus, ClientBranch, ChecklistTemplate, TemplateItem } from './types';
+import React, { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
+import { Client, Permit, ChecklistItem, PermitStatus, ClientBranch, ChecklistTemplate, TemplateItem, Proposal } from './types';
 import { sampleClients, samplePermits, sampleChecklistItems, generatePermitNumber, sampleClientBranches, sampleChecklistTemplates } from './data';
 import { generateId, getTodayFormatted, calculateProgress } from './utils';
 
@@ -13,6 +13,7 @@ interface AppContextType {
   checklistItems: ChecklistItem[];
   clientBranches: ClientBranch[];
   checklistTemplates: ChecklistTemplate[];
+  proposals: Proposal[];
   
   // Client operations
   addClient: (client: Omit<Client, 'id' | 'createdAt'>) => string;
@@ -49,8 +50,21 @@ interface AppContextType {
   getChecklistTemplateById: (id: string) => ChecklistTemplate | undefined;
   applyTemplateToPermit: (templateId: string, permitId: string) => void;
   
+  // Proposal operations
+  getProposalById: (id: string) => Proposal | undefined;
+  getClientProposals: (clientId: string) => Proposal[];
+  getPermitProposals: (permitId: string) => Proposal[];
+  addProposal: (proposal: Proposal) => void;
+  updateProposal: (id: string, data: Partial<Proposal>) => void;
+  deleteProposal: (id: string) => void;
+  
   // Dashboard operations
   getOpenPermits: () => Permit[];
+  getPermitProgress: (permitId: string) => number;
+  
+  // Permit numbering
+  nextPermitNumber: number;
+  incrementPermitNumber: () => void;
 }
 
 // Create the context
@@ -130,6 +144,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return sampleChecklistTemplates;
   });
 
+  const [proposals, setProposals] = useState<Proposal[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedProposals = localStorage.getItem('proposals');
+      return storedProposals ? JSON.parse(storedProposals) : [];
+    }
+    return [];
+  });
+
   // Save data to localStorage when it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -138,8 +160,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('checklistItems', JSON.stringify(checklistItems));
       localStorage.setItem('clientBranches', JSON.stringify(clientBranches));
       localStorage.setItem('checklistTemplates', JSON.stringify(checklistTemplates));
+      localStorage.setItem('proposals', JSON.stringify(proposals));
     }
-  }, [clients, permits, checklistItems, clientBranches, checklistTemplates]);
+  }, [clients, permits, checklistItems, clientBranches, checklistTemplates, proposals]);
 
   // Client operations
   const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>) => {
@@ -438,6 +461,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updatePermit(permitId, { progress });
   };
 
+  // Proposal operations
+  const getProposalById = (id: string) => {
+    return proposals.find(proposal => proposal.id === id);
+  };
+  
+  const getClientProposals = (clientId: string) => {
+    return proposals.filter(proposal => proposal.clientId === clientId);
+  };
+  
+  const getPermitProposals = (permitId: string) => {
+    return proposals.filter(proposal => proposal.permitId === permitId);
+  };
+  
+  const addProposal = (proposal: Proposal) => {
+    const newProposal = {
+      ...proposal,
+      id: proposal.id || generateId(),
+      createdAt: proposal.createdAt || getTodayFormatted()
+    };
+    setProposals(prev => [...prev, newProposal]);
+  };
+  
+  const updateProposal = (id: string, data: Partial<Proposal>) => {
+    setProposals(prevProposals =>
+      prevProposals.map(proposal =>
+        proposal.id === id ? { ...proposal, ...data } : proposal
+      )
+    );
+  };
+  
+  const deleteProposal = (id: string) => {
+    setProposals(prevProposals => 
+      prevProposals.filter(proposal => proposal.id !== id)
+    );
+  };
+
   // Dashboard operations
   const getOpenPermits = () => {
     // Get permits that are not approved or expired
@@ -446,6 +505,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ).sort((a, b) => {
       // Sort by creation date (newest first)
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  };
+  
+  const getPermitProgress = (permitId: string) => {
+    const permit = permits.find(p => p.id === permitId);
+    return permit?.progress || 0;
+  };
+
+  // Permit numbering
+  const [nextPermitNumber, setNextPermitNumber] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const storedNumber = localStorage.getItem('nextPermitNumber');
+      return storedNumber ? parseInt(storedNumber, 10) : 1001;
+    }
+    return 1001;
+  });
+
+  const incrementPermitNumber = () => {
+    setNextPermitNumber(prev => {
+      const next = prev + 1;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nextPermitNumber', next.toString());
+      }
+      return next;
     });
   };
 
@@ -458,6 +541,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         checklistItems,
         clientBranches,
         checklistTemplates,
+        proposals,
         
         // Client operations
         addClient,
@@ -494,8 +578,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         getChecklistTemplateById,
         applyTemplateToPermit,
         
+        // Proposal operations
+        getProposalById,
+        getClientProposals,
+        getPermitProposals,
+        addProposal,
+        updateProposal,
+        deleteProposal,
+        
         // Dashboard operations
         getOpenPermits,
+        getPermitProgress,
+        
+        // Permit numbering
+        nextPermitNumber,
+        incrementPermitNumber,
       }}
     >
       {children}

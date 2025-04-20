@@ -8,7 +8,7 @@ import {
   Flex,
   Button,
   Badge
-} from '@tremor/react';
+} from '@/components/ui';
 import { useSearchParams } from 'next/navigation';
 import { useAppContext } from '@/lib/context';
 import ProposalForm from '../ProposalForm';

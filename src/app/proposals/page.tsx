@@ -17,7 +17,7 @@ import {
   Select,
   SelectItem,
   TextInput
-} from '@tremor/react';
+} from '@/components/ui';
 import { useAppContext } from '@/lib/context';
 import { 
   PlusCircleIcon as PlusCircle, 
@@ -104,7 +104,7 @@ export default function ProposalsPage() {
               icon={Search}
               placeholder="Search proposals..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             />
           </div>
           

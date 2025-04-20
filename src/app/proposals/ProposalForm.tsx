@@ -10,7 +10,7 @@ import {
   Textarea,
   Divider,
   Text
-} from '@tremor/react';
+} from '@/components/ui';
 import { 
   PlusIcon as Plus, 
   Trash2Icon as Trash2, 
@@ -18,7 +18,7 @@ import {
   FileTextIcon as FileText, 
   SendIcon as Send 
 } from 'lucide-react';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/components/ui';
 import { generateProposalAction, sendProposalEmailAction } from '@/app/actions/proposal-actions';
 import type { Client, Permit, Proposal, ProposalItem, ProposalStatus } from '@/lib/types';
 import { createNewProposal } from '@/lib/proposal-utils';

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import DashboardLayout from '../../dashboard-layout';
 import { 
   Card, 
   Title, 
@@ -24,8 +25,8 @@ export default function NewProposalPage() {
   const hasClients = clients.length > 0;
   
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
-      <Flex justifyContent="between" alignItems="center" className="mb-6">
+    <DashboardLayout title="New Proposal">
+      <div className="mb-6 flex justify-between items-center">
         <div>
           <Link href="/proposals">
             <Button
@@ -37,7 +38,7 @@ export default function NewProposalPage() {
               Back to Proposals
             </Button>
           </Link>
-          <Title>Create New Proposal</Title>
+          <h1 className="text-2xl font-semibold">Create New Proposal</h1>
           <Text>Create a detailed proposal to send to your client</Text>
         </div>
         
@@ -46,7 +47,7 @@ export default function NewProposalPage() {
             Linked to Permit
           </Badge>
         )}
-      </Flex>
+      </div>
       
       {hasClients ? (
         <ProposalForm clients={clients} permitId={permitId} />
@@ -61,6 +62,6 @@ export default function NewProposalPage() {
           </Link>
         </Card>
       )}
-    </div>
+    </DashboardLayout>
   );
 } 

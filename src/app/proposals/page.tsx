@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import DashboardLayout from '../dashboard-layout';
 import { 
   Card, 
   Title, 
@@ -42,13 +43,30 @@ const statusColors: Record<ProposalStatus, string> = {
 };
 
 export default function ProposalsPage() {
-  const { proposals, clients, getClientById } = useAppContext();
+  const { proposals, clients, getClientById, deleteProposal } = useAppContext();
   const router = useRouter();
   
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [clientFilter, setClientFilter] = useState<string>('all');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [proposalToDelete, setProposalToDelete] = useState<string | null>(null);
+
+  // Confirm delete
+  const confirmDelete = (proposalId: string) => {
+    setProposalToDelete(proposalId);
+    setShowDeleteModal(true);
+  };
+
+  // Handle proposal deletion
+  const handleDeleteProposal = () => {
+    if (!proposalToDelete) return;
+    
+    deleteProposal(proposalToDelete);
+    setProposalToDelete(null);
+    setShowDeleteModal(false);
+  };
   
   // Filter proposals based on search and filters
   const filteredProposals = proposals.filter(proposal => {
@@ -80,11 +98,21 @@ export default function ProposalsPage() {
     return client ? client.name : 'Unknown Client';
   };
   
+  // Handle preview PDF
+  const handlePreviewPdf = (proposalId: string) => {
+    router.push(`/proposals/${proposalId}?action=preview`);
+  };
+  
+  // Handle send email
+  const handleSendEmail = (proposalId: string) => {
+    router.push(`/proposals/${proposalId}?action=email`);
+  };
+  
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
-      <Flex justifyContent="between" alignItems="center" className="mb-6">
+    <DashboardLayout title="Proposals">
+      <div className="mb-6 flex justify-between items-center">
         <div>
-          <Title>Proposals</Title>
+          <h1 className="text-2xl font-semibold">Proposals</h1>
           <Text>Create and manage client proposals</Text>
         </div>
         <Button 
@@ -94,7 +122,7 @@ export default function ProposalsPage() {
         >
           New Proposal
         </Button>
-      </Flex>
+      </div>
       
       {/* Filters */}
       <Card className="mb-6 p-4">
@@ -140,95 +168,167 @@ export default function ProposalsPage() {
       </Card>
       
       {/* Proposals Table */}
-      <Card>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>Proposal #</TableHeaderCell>
-              <TableHeaderCell>Title</TableHeaderCell>
-              <TableHeaderCell>Client</TableHeaderCell>
-              <TableHeaderCell>Date</TableHeaderCell>
-              <TableHeaderCell>Amount</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Actions</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredProposals.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-6">
-                  <Text>No proposals found. Create your first proposal to get started.</Text>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredProposals.map((proposal) => (
-                <TableRow key={proposal.id}>
-                  <TableCell>
-                    <Link 
-                      href={`/proposals/${proposal.id}`}
-                      className="text-blue-600 hover:underline font-medium"
-                    >
-                      {proposal.id}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{proposal.title}</TableCell>
-                  <TableCell>{getClientName(proposal.clientId)}</TableCell>
-                  <TableCell>{proposal.date}</TableCell>
-                  <TableCell>{formatCurrency(proposal.totalAmount)}</TableCell>
-                  <TableCell>
-                    <Badge color={statusColors[proposal.status] as any}>
-                      {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Flex justifyContent="start" className="gap-2">
-                      <Link href={`/proposals/${proposal.id}`}>
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        {filteredProposals.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            {searchQuery || statusFilter !== 'all' || clientFilter !== 'all' 
+              ? "No proposals match your search criteria" 
+              : "No proposals yet. Click 'New Proposal' to get started."}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Proposal #
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Title
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th scope="col" className="relative px-6 py-3">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredProposals.map((proposal) => (
+                  <tr key={proposal.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        <Link 
+                          href={`/proposals/${proposal.id}`}
+                          className="text-blue-600 hover:underline font-medium"
+                        >
+                          {proposal.id.slice(0, 8)}
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{proposal.title}</div>
+                      {proposal.permitId && (
+                        <div className="text-xs text-gray-500">
+                          <Link href={`/permits/${proposal.permitId}`} className="hover:text-blue-600">
+                            Linked to Permit
+                          </Link>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        <Link href={`/clients/${proposal.clientId}`} className="hover:text-blue-600">
+                          {getClientName(proposal.clientId)}
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {proposal.date}
+                      <div className="text-xs text-gray-400">
+                        Valid until: {proposal.validUntil}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {formatCurrency(proposal.totalAmount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge color={statusColors[proposal.status] as any}>
+                        {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
+                        <Link href={`/proposals/${proposal.id}`}>
+                          <Button
+                            icon={Eye}
+                            variant="light"
+                            color="gray"
+                            tooltip="View"
+                            size="xs"
+                          />
+                        </Link>
+                        <Link href={`/proposals/${proposal.id}/edit`}>
+                          <Button
+                            icon={Edit}
+                            variant="light"
+                            color="blue"
+                            tooltip="Edit"
+                            size="xs"
+                          />
+                        </Link>
                         <Button
-                          icon={Eye}
+                          icon={FileText}
                           variant="light"
-                          color="gray"
-                          tooltip="View"
+                          color="green"
+                          tooltip="Preview PDF"
                           size="xs"
+                          onClick={() => handlePreviewPdf(proposal.id)}
                         />
-                      </Link>
-                      <Link href={`/proposals/${proposal.id}/edit`}>
                         <Button
-                          icon={Edit}
+                          icon={Send}
                           variant="light"
-                          color="blue"
-                          tooltip="Edit"
+                          color="purple"
+                          tooltip="Send Email"
                           size="xs"
+                          onClick={() => handleSendEmail(proposal.id)}
                         />
-                      </Link>
-                      <Button
-                        icon={FileText}
-                        variant="light"
-                        color="green"
-                        tooltip="Preview PDF"
-                        size="xs"
-                      />
-                      <Button
-                        icon={Send}
-                        variant="light"
-                        color="purple"
-                        tooltip="Send Email"
-                        size="xs"
-                      />
-                      <Button
-                        icon={Trash2}
-                        variant="light"
-                        color="red"
-                        tooltip="Delete"
-                        size="xs"
-                      />
-                    </Flex>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
-    </div>
+                        <Button
+                          icon={Trash2}
+                          variant="light"
+                          color="red"
+                          tooltip="Delete"
+                          size="xs"
+                          onClick={() => confirmDelete(proposal.id)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-medium mb-4">Confirm Deletion</h3>
+            <p className="text-gray-700 mb-4">
+              Are you sure you want to delete this proposal? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setProposalToDelete(null);
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteProposal}
+                className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
   );
 } 

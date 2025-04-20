@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '../../dashboard-layout';
 import { useAppContext } from '@/lib/context';
 import { 
   Card, 
@@ -54,7 +55,7 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
   
   if (!proposal) {
     return (
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
+      <DashboardLayout title="Proposal Not Found">
         <Card className="p-6">
           <Flex justifyContent="center" className="h-40">
             <div className="text-center">
@@ -66,7 +67,7 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
             </div>
           </Flex>
         </Card>
-      </div>
+      </DashboardLayout>
     );
   }
   
@@ -165,8 +166,8 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
       const emailResult = await sendProposalEmailAction(
         proposal,
         client,
-        pdfResult.pdfData,
-        pdfResult.fileName ? pdfResult.fileName : 'proposal.pdf'
+        pdfResult.pdfData as string,
+        pdfResult.fileName || 'proposal.pdf'
       );
       
       if (emailResult.success) {
@@ -229,8 +230,8 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
   };
   
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
-      <Flex justifyContent="between" alignItems="center" className="mb-6">
+    <DashboardLayout title="Proposal Details">
+      <div className="mb-6 flex justify-between items-center">
         <div>
           <Link href="/proposals">
             <Button
@@ -242,7 +243,7 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
               Back to Proposals
             </Button>
           </Link>
-          <Title>Proposal Details</Title>
+          <h1 className="text-2xl font-semibold">Proposal Details</h1>
           <Flex alignItems="center" className="mt-1">
             <Text>Proposal #{proposal.id}</Text>
             <Badge color={statusColors[proposal.status]} className="ml-2">
@@ -299,7 +300,7 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
             Delete
           </Button>
         </Flex>
-      </Flex>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content - 2/3 width */}
@@ -554,6 +555,6 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
           </Card>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 } 

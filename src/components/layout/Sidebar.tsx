@@ -108,7 +108,7 @@ export default function Sidebar() {
       )}
       
       {/* Sidebar */}
-      <aside className={`fixed lg:sticky top-0 inset-y-0 left-0 z-20 h-full lg:h-screen w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out transform ${
+      <aside className={`fixed lg:sticky top-0 inset-y-0 left-0 z-20 h-full lg:h-screen bg-white border-r border-gray-100 flex flex-col shrink-0 transition-transform duration-300 ease-in-out transform ${
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`} style={{ width: 'var(--sidebar-width, 16rem)' }}>
         <Logo />

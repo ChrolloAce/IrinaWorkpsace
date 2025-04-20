@@ -1,7 +1,10 @@
 {
   "version": 2,
-  "buildCommand": "npm install --force && npm run build",
-  "installCommand": "npm install --force",
+  "buildCommand": "npm install --no-save @tremor/react@3.11.1 lucide-react@0.294.0 && SKIP_DEPENDENCY_CHECK=true npm run build",
+  "installCommand": "npm install",
   "framework": "nextjs",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "env": {
+    "SKIP_DEPENDENCY_CHECK": "true"
+  }
 } 

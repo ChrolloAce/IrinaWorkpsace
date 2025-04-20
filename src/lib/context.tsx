@@ -57,6 +57,7 @@ interface AppContextType {
   addProposal: (proposal: Proposal) => void;
   updateProposal: (id: string, data: Partial<Proposal>) => void;
   deleteProposal: (id: string) => void;
+  convertProposalToPermit: (proposalId: string) => string | undefined;
   
   // Dashboard operations
   getOpenPermits: () => Permit[];
@@ -489,12 +490,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
         proposal.id === id ? { ...proposal, ...data } : proposal
       )
     );
+
+    // If the proposal status is changed to 'accepted', check if we should convert it to a permit
+    const updatedProposal = proposals.find(p => p.id === id);
+    if (updatedProposal && data.status === 'accepted' && updatedProposal.status !== 'accepted') {
+      convertProposalToPermit(id);
+    }
   };
   
   const deleteProposal = (id: string) => {
     setProposals(prevProposals => 
       prevProposals.filter(proposal => proposal.id !== id)
     );
+  };
+
+  // Convert an approved proposal to a permit
+  const convertProposalToPermit = (proposalId: string) => {
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal || proposal.status !== 'accepted') return;
+
+    // Create a permit based on the proposal data
+    const newPermitData = {
+      title: proposal.title,
+      clientId: proposal.clientId,
+      permitType: 'Commercial', // Default type
+      status: 'draft' as PermitStatus,
+      location: '', // This will need to be filled in later
+      description: proposal.scope,
+      permitNumber: `P-${nextPermitNumber}`
+    };
+
+    // Add the permit
+    const permitId = addPermit(newPermitData);
+
+    // Create checklist items from proposal items
+    proposal.items.forEach(item => {
+      addChecklistItem({
+        permitId,
+        title: item.description,
+        completed: false,
+        price: item.unitPrice * item.quantity
+      });
+    });
+
+    // Update proposal to link it to the permit
+    updateProposal(proposalId, { 
+      permitId,
+      notes: (proposal.notes || '') + `\nConverted to Permit #${newPermitData.permitNumber} on ${getTodayFormatted()}`
+    });
+
+    // Return the new permit ID
+    return permitId;
   };
 
   // Dashboard operations
@@ -585,6 +631,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addProposal,
         updateProposal,
         deleteProposal,
+        convertProposalToPermit,
         
         // Dashboard operations
         getOpenPermits,

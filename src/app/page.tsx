@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FiPlus, FiFileText, FiCheckSquare, FiUsers, FiClock, FiChevronRight } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
 import { formatDate } from '@/lib/utils';
+import { Card, Flex, Text } from '@/components/ui';
 
 // Stats Card Component
 const StatsCard = ({ 
@@ -232,6 +233,48 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Additional Links */}
+      <div className="mt-6">
+        <h2 className="text-lg font-medium mb-4">Additional Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Link href="/permits" className="w-full">
+            <Card className="p-4 hover:bg-gray-50 transition-colors">
+              <Flex justifyContent="start" className="gap-3">
+                <FiFileText size={24} className="text-blue-500" />
+                <div>
+                  <Text className="font-medium">Manage Permits</Text>
+                  <Text className="text-gray-500 text-sm">View and manage all permits</Text>
+                </div>
+              </Flex>
+            </Card>
+          </Link>
+          
+          <Link href="/proposals" className="w-full">
+            <Card className="p-4 hover:bg-gray-50 transition-colors">
+              <Flex justifyContent="start" className="gap-3">
+                <FiFileText size={24} className="text-green-500" />
+                <div>
+                  <Text className="font-medium">Proposals</Text>
+                  <Text className="text-gray-500 text-sm">Create and send client proposals</Text>
+                </div>
+              </Flex>
+            </Card>
+          </Link>
+          
+          <Link href="/clients" className="w-full">
+            <Card className="p-4 hover:bg-gray-50 transition-colors">
+              <Flex justifyContent="start" className="gap-3">
+                <FiUsers size={24} className="text-violet-500" />
+                <div>
+                  <Text className="font-medium">Clients</Text>
+                  <Text className="text-gray-500 text-sm">Manage your client database</Text>
+                </div>
+              </Flex>
+            </Card>
+          </Link>
         </div>
       </div>
     </DashboardLayout>

@@ -16,12 +16,12 @@ export async function generateInvoiceAction(
     console.log("Starting invoice generation for permit:", permit.id);
     
     // Create invoice data
-    const invoiceData = await createInvoiceData(permit, client, checklistItems);
+    const invoiceData = createInvoiceData(permit, client, checklistItems);
     
     // Generate PDF with the invoice data
     const fileName = `invoice-${permit.id.substring(0, 8)}.pdf`;
     
-    // Generate the PDF using the API
+    // Generate the PDF in memory
     const pdfData = await generatePdfInvoice(invoiceData, fileName);
     
     // Generate a unique ID for this PDF

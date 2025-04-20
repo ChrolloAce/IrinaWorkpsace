@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from './dashboard-layout';
 import Link from 'next/link';
-import { FiPlus, FiFileText, FiCheckSquare, FiUsers, FiClock, FiChevronRight } from 'react-icons/fi';
+import { FiPlus, FiFileText, FiCheckSquare, FiUsers, FiClock, FiChevronRight, FiFile } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
 import { formatDate } from '@/lib/utils';
 import { Card, Flex, Text } from '@/components/ui';
@@ -105,6 +105,9 @@ export default function Home() {
     Array<{ permit: typeof permits[0]; client: typeof clients[0] | undefined }>
   >([]);
   
+  const { proposals, getClientById } = useAppContext();
+  const [recentProposals, setRecentProposals] = useState<typeof proposals>([]);
+  
   // Fetch open permits on load
   useEffect(() => {
     const open = getOpenPermits().slice(0, 5); // Get top 5 open permits
@@ -116,7 +119,13 @@ export default function Home() {
     }));
     
     setOpenPermits(withClients);
-  }, [getOpenPermits, clients]);
+    
+    // Get recent proposals
+    const recent = [...proposals]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 3);
+    setRecentProposals(recent);
+  }, [getOpenPermits, clients, proposals]);
   
   // Count stats
   const totalPermits = permits.length;
@@ -137,11 +146,16 @@ export default function Home() {
       {/* Quick Actions */}
       <div className="mb-6">
         <h2 className="text-lg font-medium mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <ActionButton 
             icon={<FiPlus size={20} />} 
             label="New Permit" 
             href="/permits/new" 
+          />
+          <ActionButton 
+            icon={<FiFile size={20} />} 
+            label="New Proposal" 
+            href="/proposals/new" 
           />
           <ActionButton 
             icon={<FiUsers size={20} />} 
@@ -233,6 +247,49 @@ export default function Home() {
               </div>
             </div>
           </div>
+          
+          {/* Recent Proposals */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium">Recent Proposals</h2>
+              <Link href="/proposals" className="text-sm text-indigo-600">View All</Link>
+            </div>
+            <div className="card">
+              <div className="space-y-4">
+                {recentProposals.map(proposal => {
+                  const client = getClientById(proposal.clientId);
+                  const statusColors: Record<string, string> = {
+                    'draft': 'bg-gray-50 text-gray-700',
+                    'sent': 'bg-blue-50 text-blue-700',
+                    'accepted': 'bg-green-50 text-green-700',
+                    'declined': 'bg-red-50 text-red-700',
+                  };
+                  
+                  return (
+                    <div key={proposal.id} className="flex justify-between items-center pb-3 border-b">
+                      <div>
+                        <div className="font-medium">{proposal.title}</div>
+                        <div className="text-sm text-gray-500">
+                          {client?.name || 'Unknown Client'} • {formatDate(proposal.createdAt)}
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <div className={`px-3 py-1 rounded-full text-xs ${statusColors[proposal.status]} mr-2`}>
+                          {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+                        </div>
+                        <Link href={`/proposals/${proposal.id}`} className="text-sm text-indigo-600">View</Link>
+                      </div>
+                    </div>
+                  );
+                })}
+                {recentProposals.length === 0 && (
+                  <div className="py-4 text-center text-gray-500">
+                    No recent proposals found.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -255,7 +312,7 @@ export default function Home() {
           <Link href="/proposals" className="w-full">
             <Card className="p-4 hover:bg-gray-50 transition-colors">
               <Flex justifyContent="start" className="gap-3">
-                <FiFileText size={24} className="text-green-500" />
+                <FiFile size={24} className="text-green-500" />
                 <div>
                   <Text className="font-medium">Proposals</Text>
                   <Text className="text-gray-500 text-sm">Create and send client proposals</Text>

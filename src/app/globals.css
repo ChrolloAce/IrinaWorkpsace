@@ -13,6 +13,8 @@
   --gray-light: 243, 244, 246;
   --gray: 156, 163, 175;
   --gray-dark: 75, 85, 99;
+  --sidebar-width: 16rem;
+  --content-width: calc(100% - var(--sidebar-width));
 }
 
 * {
@@ -72,14 +74,18 @@ a {
     @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
   }
   
-  @screen lg {
-    .sidebar-width {
-      width: 16rem; /* w-64 */
-    }
-    
-    .content-area {
-      width: calc(100% - 16rem);
-      margin-left: 16rem;
+  /* Layout support for the dashboard */
+  .content-wrapper {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  
+  @media (min-width: 1024px) {
+    .content-wrapper {
+      width: var(--content-width);
+      margin-left: var(--sidebar-width);
     }
   }
 } 

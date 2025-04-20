@@ -15,10 +15,10 @@ export default function Header({ title }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white border-b border-gray-100 py-4 px-6 flex items-center justify-between sticky top-0 z-10">
-      <h1 className="text-xl font-semibold">{title}</h1>
+    <header className="bg-white border-b border-gray-100 py-4 px-4 md:px-6 flex items-center justify-between sticky top-0 z-10 w-full overflow-hidden">
+      <h1 className="text-xl font-semibold truncate">{title}</h1>
       
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 md:space-x-4 ml-auto">
         {/* Search bar - hide on small screens */}
         <div className="relative hidden md:block">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -27,18 +27,18 @@ export default function Header({ title }: HeaderProps) {
           <input
             type="text"
             placeholder="Search"
-            className="bg-gray-50 pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="bg-gray-50 pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full md:w-auto"
           />
         </div>
         
         {/* Notification icon */}
-        <button className="p-2 rounded-full hover:bg-gray-100 relative">
+        <button className="p-2 rounded-full hover:bg-gray-100 relative flex-shrink-0">
           <FiBell className="h-5 w-5 text-gray-500" />
           <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
         </button>
         
         {/* Profile dropdown */}
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <button 
             onClick={toggleProfileMenu}
             className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 focus:outline-none"

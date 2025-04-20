@@ -1,13 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
-  swcMinify: true,
   images: {
     domains: ['localhost'],
-  },
-  experimental: {
-    serverComponentsExternalPackages: ['nodemailer'],
-    esmExternals: 'loose',
   },
   typescript: {
     // Ignore TypeScript errors when building
@@ -28,12 +23,6 @@ const nextConfig = {
         dns: false,
       };
     }
-    
-    // Add transpilation for problematic packages
-    if (!config.transpilePackages) {
-      config.transpilePackages = [];
-    }
-    config.transpilePackages.push('@tremor/react', 'lucide-react');
     
     return config;
   },

@@ -10,7 +10,8 @@ import {
   FiCheckSquare,
   FiSettings,
   FiMenu,
-  FiX
+  FiX,
+  FiFile
 } from 'react-icons/fi';
 
 // Logo component
@@ -64,6 +65,12 @@ export default function Sidebar() {
       icon: <FiUsers size={18} />, 
       label: 'Clients',
       active: pathname === '/clients' || pathname.startsWith('/clients/')
+    },
+    { 
+      href: '/proposals', 
+      icon: <FiFile size={18} />, 
+      label: 'Proposals',
+      active: pathname === '/proposals' || pathname.startsWith('/proposals/')
     },
     { 
       href: '/permits', 

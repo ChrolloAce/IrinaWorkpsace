@@ -160,7 +160,7 @@ irina@irhsmart.com
     // Prepare PDF attachment
     const attachment = {
       filename: fileName,
-      content: pdfData.split('base64,')[1], // Remove the data URL prefix
+      content: pdfData.split('base64,')[1] || pdfData, // Handle both with and without data URL prefix
       encoding: 'base64'
     };
     

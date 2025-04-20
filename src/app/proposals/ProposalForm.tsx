@@ -4,15 +4,21 @@ import { useState, useEffect } from 'react';
 import { 
   Button,
   Card,
-  Input,
+  TextInput as Input,
   Select,
   SelectItem,
   Textarea,
   Divider,
   Text
 } from '@tremor/react';
-import { Plus, Trash2, Save, FileText, Send } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { 
+  PlusIcon as Plus, 
+  Trash2Icon as Trash2, 
+  SaveIcon as Save, 
+  FileTextIcon as FileText, 
+  SendIcon as Send 
+} from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 import { generateProposalAction, sendProposalEmailAction } from '@/app/actions/proposal-actions';
 import type { Client, Permit, Proposal, ProposalItem, ProposalStatus } from '@/lib/types';
 import { createNewProposal } from '@/lib/proposal-utils';
@@ -234,8 +240,12 @@ export default function ProposalForm({
         addProposal(proposal);
       }
       
-      // Generate PDF
-      const result = await generateProposalAction(proposal, selectedClient, selectedPermit);
+      // Generate PDF - ensure selectedPermit is not undefined
+      const result = await generateProposalAction(
+        proposal, 
+        selectedClient, 
+        selectedPermit || null
+      );
       
       if (result.success) {
         // Open the PDF in a new tab

@@ -19,7 +19,15 @@ import {
   TextInput
 } from '@tremor/react';
 import { useAppContext } from '@/lib/context';
-import { PlusCircle, Search, FileText, Send, Eye, Trash2, Edit } from 'lucide-react';
+import { 
+  PlusCircleIcon as PlusCircle, 
+  SearchIcon as Search, 
+  FileTextIcon as FileText, 
+  SendIcon as Send, 
+  EyeIcon as Eye, 
+  Trash2Icon as Trash2, 
+  EditIcon as Edit 
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils';

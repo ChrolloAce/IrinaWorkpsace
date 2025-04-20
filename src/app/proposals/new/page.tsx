@@ -12,7 +12,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { useAppContext } from '@/lib/context';
 import ProposalForm from '../ProposalForm';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeftIcon as ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NewProposalPage() {

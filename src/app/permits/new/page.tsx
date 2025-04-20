@@ -4,16 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import Link from 'next/link';
-import { FiArrowLeft, FiSave, FiPlus, FiTrash, FiAlertCircle, FiCheckSquare } from 'react-icons/fi';
+import { FiArrowLeft, FiSave, FiPlus, FiTrash, FiAlertCircle, FiCheckSquare, FiMapPin } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
-import { PermitStatus, ChecklistTemplate } from '@/lib/types';
+import { PermitStatus, ChecklistTemplate, ClientBranch } from '@/lib/types';
 
 type FormState = {
   title: string;
   clientId: string;
+  branchId: string;
   permitType: string;
   status: PermitStatus;
-  location: string;
   description: string;
   assignedTo: string;
   expiresAt: string;
@@ -22,11 +22,12 @@ type FormState = {
 
 export default function NewPermitPage() {
   const router = useRouter();
-  const { clients, addPermit, addChecklistItem, checklistTemplates } = useAppContext();
+  const { clients, addPermit, addChecklistItem, checklistTemplates, clientBranches, getClientBranches } = useAppContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [filteredTemplates, setFilteredTemplates] = useState<ChecklistTemplate[]>([]);
+  const [availableBranches, setAvailableBranches] = useState<ClientBranch[]>([]);
   
   // Default expiration date (12 months from today)
   const getDefaultExpirationDate = () => {
@@ -39,9 +40,9 @@ export default function NewPermitPage() {
   const [formState, setFormState] = useState<FormState>({
     title: '',
     clientId: '',
+    branchId: '',
     permitType: '',
     status: 'draft',
-    location: '',
     description: '',
     assignedTo: '',
     expiresAt: getDefaultExpirationDate(),
@@ -50,6 +51,28 @@ export default function NewPermitPage() {
   
   // New checklist item input
   const [newChecklistItem, setNewChecklistItem] = useState('');
+
+  // Update branches when client changes
+  useEffect(() => {
+    if (formState.clientId) {
+      const branches = getClientBranches(formState.clientId);
+      setAvailableBranches(branches);
+      
+      // If there's only one branch or there's a main location, select it automatically
+      const mainBranch = branches.find(branch => branch.isMainLocation);
+      if (branches.length === 1) {
+        setFormState(prev => ({ ...prev, branchId: branches[0].id }));
+      } else if (mainBranch) {
+        setFormState(prev => ({ ...prev, branchId: mainBranch.id }));
+      } else {
+        // Reset branch selection if client changes and no default branch is available
+        setFormState(prev => ({ ...prev, branchId: '' }));
+      }
+    } else {
+      setAvailableBranches([]);
+      setFormState(prev => ({ ...prev, branchId: '' }));
+    }
+  }, [formState.clientId, getClientBranches]);
 
   // Filter templates based on selected permit type
   useEffect(() => {
@@ -124,10 +147,19 @@ export default function NewPermitPage() {
     
     try {
       // Validate required fields
-      if (!formState.title || !formState.clientId || !formState.permitType || 
-          !formState.location || !formState.description) {
+      if (!formState.title || !formState.clientId || !formState.branchId || !formState.permitType || 
+          !formState.description) {
         throw new Error("Please fill in all required fields");
       }
+      
+      // Get location from selected branch
+      const selectedBranch = availableBranches.find(b => b.id === formState.branchId);
+      if (!selectedBranch) {
+        throw new Error("Please select a valid branch location");
+      }
+      
+      // Create location string from branch data
+      const location = `${selectedBranch.name}, ${selectedBranch.address}, ${selectedBranch.city}, ${selectedBranch.state} ${selectedBranch.zipCode}`;
       
       // Create the permit
       const permitId = addPermit({
@@ -135,7 +167,7 @@ export default function NewPermitPage() {
         clientId: formState.clientId,
         permitType: formState.permitType,
         status: formState.status,
-        location: formState.location,
+        location,
         description: formState.description,
         assignedTo: formState.assignedTo || undefined,
         expiresAt: formState.expiresAt || null,
@@ -230,6 +262,27 @@ export default function NewPermitPage() {
             </div>
             
             <div>
+              <label htmlFor="permitType" className="block text-sm font-medium text-gray-700 mb-1">
+                Permit Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="permitType"
+                name="permitType"
+                value={formState.permitType}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                required
+              >
+                <option value="">Select type</option>
+                {permitTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
               <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 mb-1">
                 Client <span className="text-red-500">*</span>
               </label>
@@ -252,6 +305,7 @@ export default function NewPermitPage() {
                 <Link 
                   href="/clients/new"
                   className="flex items-center justify-center px-4 py-2 border border-l-0 border-gray-300 rounded-r-lg bg-gray-50 hover:bg-gray-100"
+                  title="Add New Client"
                 >
                   <FiPlus size={18} />
                 </Link>
@@ -259,26 +313,33 @@ export default function NewPermitPage() {
             </div>
             
             <div>
-              <label htmlFor="permitType" className="block text-sm font-medium text-gray-700 mb-1">
-                Permit Type <span className="text-red-500">*</span>
+              <label htmlFor="branchId" className="block text-sm font-medium text-gray-700 mb-1">
+                Branch Location <span className="text-red-500">*</span>
               </label>
               <select
-                id="permitType"
-                name="permitType"
-                value={formState.permitType}
+                id="branchId"
+                name="branchId"
+                value={formState.branchId}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                 required
+                disabled={!formState.clientId || availableBranches.length === 0}
               >
-                <option value="">Select type</option>
-                {permitTypes.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
+                <option value="">Select branch</option>
+                {availableBranches.map(branch => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name} {branch.isMainLocation ? '(Main)' : ''}
                   </option>
                 ))}
               </select>
+              {formState.clientId && availableBranches.length === 0 && (
+                <p className="text-sm text-amber-600 mt-1 flex items-center">
+                  <FiAlertCircle className="mr-1" size={14} />
+                  No branches available for this client. Please add a branch first.
+                </p>
+              )}
             </div>
-            
+
             <div>
               <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
                 Status <span className="text-red-500">*</span>
@@ -297,52 +358,35 @@ export default function NewPermitPage() {
                 <option value="approved">Approved</option>
               </select>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                Location <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={formState.location}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Project location"
-                required
-              />
-            </div>
             
             <div>
-              <label htmlFor="assignedTo" className="block text-sm font-medium text-gray-700 mb-1">
-                Assigned To
-              </label>
-              <input
-                type="text"
-                id="assignedTo"
-                name="assignedTo"
-                value={formState.assignedTo}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Person responsible for this permit"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="expiresAt" className="block text-sm font-medium text-gray-700 mb-1">
-                Expiration Date
-              </label>
-              <input
-                type="date"
-                id="expiresAt"
-                name="expiresAt"
-                value={formState.expiresAt}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-              />
+              <div className="flex justify-between">
+                <label htmlFor="assignedTo" className="block text-sm font-medium text-gray-700 mb-1">
+                  Assigned To
+                </label>
+                <label htmlFor="expiresAt" className="block text-sm font-medium text-gray-700 mb-1">
+                  Expiration Date
+                </label>
+              </div>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  id="assignedTo"
+                  name="assignedTo"
+                  value={formState.assignedTo}
+                  onChange={handleInputChange}
+                  className="w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Person responsible"
+                />
+                <input
+                  type="date"
+                  id="expiresAt"
+                  name="expiresAt"
+                  value={formState.expiresAt}
+                  onChange={handleInputChange}
+                  className="w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
             </div>
           </div>
           

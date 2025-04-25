@@ -7,9 +7,9 @@ import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiPlus, FiTrash, FiAlertCircle, FiCheckSquare, FiMapPin, FiX } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
 import { PermitStatus, ChecklistTemplate, ClientBranch } from '@/lib/types';
+import { generatePermitNumber } from '@/lib/data';
 
 type FormState = {
-  title: string;
   clientId: string;
   branchId: string;
   permitType: string;
@@ -42,7 +42,6 @@ export default function NewPermitPage() {
   
   // Form state
   const [formState, setFormState] = useState<FormState>({
-    title: '',
     clientId: '',
     branchId: '',
     permitType: '',
@@ -234,7 +233,7 @@ export default function NewPermitPage() {
     
     try {
       // Validate required fields
-      if (!formState.title || !formState.clientId || !formState.branchId || !formState.permitType) {
+      if (!formState.clientId || !formState.branchId || !formState.permitType) {
         throw new Error("Please fill in all required fields");
       }
       
@@ -247,9 +246,12 @@ export default function NewPermitPage() {
       // Create location string from branch data
       const location = `${selectedBranch.name}, ${selectedBranch.address}, ${selectedBranch.city}, ${selectedBranch.state} ${selectedBranch.zipCode}`;
       
+      // Generate permit number for title
+      const permitNumber = generatePermitNumber();
+      
       // Create the permit
       const permitId = addPermit({
-        title: formState.title,
+        title: permitNumber, // Use permit number as title
         clientId: formState.clientId,
         permitType: formState.permitType,
         status: formState.status,
@@ -330,22 +332,6 @@ export default function NewPermitPage() {
       <div className="bg-white rounded-xl shadow-sm p-6">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                Permit Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={formState.title}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter permit title"
-                required
-              />
-            </div>
-            
             <div>
               <label htmlFor="permitType" className="block text-sm font-medium text-gray-700 mb-1">
                 Permit Type <span className="text-red-500">*</span>

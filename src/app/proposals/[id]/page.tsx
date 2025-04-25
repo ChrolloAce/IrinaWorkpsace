@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import { useAppContext } from '@/lib/context';
 import { 
@@ -20,11 +20,13 @@ import {
   CheckIcon as Check,
   XIcon as X,
   EditIcon as Edit,
-  TrashIcon as Trash
+  TrashIcon as Trash,
+  CopyIcon as Copy,
+  AlertCircleIcon as AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { generateProposalAction, sendProposalEmailAction } from '@/app/actions/proposal-actions';
 import { ProposalStatus } from '@/lib/types';
 
@@ -39,6 +41,7 @@ const statusColors: Record<ProposalStatus, string> = {
 export default function ProposalDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { 
     getProposalById, 
@@ -50,8 +53,22 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
   } = useAppContext();
   
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({});
+  const [showConvertConfirm, setShowConvertConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const proposal = getProposalById(id);
+  
+  // Check if there's an action parameter to trigger PDF view or email
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'preview' && proposal) {
+      handleGeneratePdf();
+    } else if (action === 'email' && proposal) {
+      handleSendEmail();
+    } else if (action === 'convert' && proposal) {
+      setShowConvertConfirm(true);
+    }
+  }, [searchParams]);
   
   if (!proposal) {
     return (
@@ -82,9 +99,10 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
       
       // If accepted, show a message about converting to permit
       if (status === 'accepted') {
+        setShowConvertConfirm(true);
         toast({
           title: 'Proposal Accepted',
-          description: 'The proposal has been accepted and converted to a permit.',
+          description: 'The proposal has been accepted. Do you want to convert it to a permit?',
           variant: 'success'
         });
       } else if (status === 'declined') {
@@ -111,14 +129,16 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
   };
   
   const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this proposal? This action cannot be undone.')) {
-      deleteProposal(id);
-      router.push('/proposals');
-      toast({
-        title: 'Proposal Deleted',
-        description: 'The proposal has been permanently deleted.'
-      });
-    }
+    setShowDeleteConfirm(true);
+  };
+  
+  const confirmDelete = () => {
+    deleteProposal(id);
+    router.push('/proposals');
+    toast({
+      title: 'Proposal Deleted',
+      description: 'The proposal has been permanently deleted.'
+    });
   };
   
   const handleGeneratePdf = async () => {
@@ -130,6 +150,7 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
       const result = await generateProposalAction(proposal, client, permit || null);
       
       if (result.success) {
+        // Open the PDF in a new tab
         window.open(result.downloadUrl, '_blank');
         toast({
           title: 'PDF Generated',
@@ -144,6 +165,7 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
         description: 'Failed to generate proposal PDF.',
         variant: 'destructive'
       });
+      console.error('PDF generation error:', error);
     } finally {
       setIsLoading(prev => ({ ...prev, pdf: false }));
     }
@@ -189,23 +211,23 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
         description: 'Failed to send proposal email.',
         variant: 'destructive'
       });
+      console.error('Email sending error:', error);
     } finally {
       setIsLoading(prev => ({ ...prev, email: false }));
     }
   };
   
   const handleConvertToPermit = () => {
-    if (proposal.status !== 'accepted') {
-      // First change status to accepted
-      updateProposal(id, { status: 'accepted' });
-      // The conversion should happen automatically due to the status change trigger
-      toast({
-        title: 'Proposal Accepted',
-        description: 'The proposal has been accepted and is being converted to a permit.',
-        variant: 'success'
-      });
-    } else if (!proposal.permitId) {
-      // If already accepted but no permit yet, manually convert
+    setIsLoading(prev => ({ ...prev, convert: true }));
+    
+    try {
+      // If already has a permit, just navigate to it
+      if (proposal.permitId) {
+        router.push(`/permits/${proposal.permitId}`);
+        return;
+      }
+      
+      // Convert proposal to permit
       const permitId = convertProposalToPermit(id);
       if (permitId) {
         toast({
@@ -213,6 +235,9 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
           description: 'A new permit has been created from this proposal.',
           variant: 'success'
         });
+        
+        // Redirect to the new permit
+        router.push(`/permits/${permitId}`);
       } else {
         toast({
           title: 'Error',
@@ -220,12 +245,15 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
           variant: 'destructive'
         });
       }
-    } else {
+    } catch (error) {
       toast({
-        title: 'Already Converted',
-        description: 'This proposal has already been converted to a permit.',
-        variant: 'info'
+        title: 'Error',
+        description: 'An error occurred during conversion.',
+        variant: 'destructive'
       });
+    } finally {
+      setIsLoading(prev => ({ ...prev, convert: false }));
+      setShowConvertConfirm(false);
     }
   };
   
@@ -436,6 +464,24 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
         <div className="space-y-6">
           {/* Actions Card */}
           <Card className="p-6">
+            <Title className="text-lg mb-4">Proposal Status</Title>
+            
+            <div className="mb-4">
+              <div className="flex items-center mb-2">
+                <div className={`w-3 h-3 rounded-full mr-2 bg-${statusColors[proposal.status]}-500`}></div>
+                <Text className="font-medium">Current Status: {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}</Text>
+              </div>
+              
+              <Text className="text-sm text-gray-500 mb-4">
+                {proposal.status === 'draft' && 'This proposal is in draft mode and has not been sent to the client yet.'}
+                {proposal.status === 'sent' && 'This proposal has been sent to the client and is awaiting their response.'}
+                {proposal.status === 'accepted' && 'This proposal has been accepted by the client.'}
+                {proposal.status === 'declined' && 'This proposal has been declined by the client.'}
+              </Text>
+            </div>
+            
+            <Divider className="my-4" />
+            
             <Title className="text-lg mb-4">Actions</Title>
             
             {proposal.status === 'draft' && (
@@ -443,10 +489,21 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
                 <Button
                   icon={Send}
                   color="blue"
-                  className="w-full"
+                  className="w-full mb-2"
                   onClick={() => handleStatusChange('sent')}
+                  loading={isLoading.status}
                 >
                   Mark as Sent
+                </Button>
+                
+                <Button
+                  icon={Send}
+                  color="purple"
+                  className="w-full"
+                  onClick={handleSendEmail}
+                  loading={isLoading.email}
+                >
+                  Send to Client
                 </Button>
               </div>
             )}
@@ -457,9 +514,10 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
                   icon={Check}
                   color="green"
                   className="w-full"
-                  onClick={handleConvertToPermit}
+                  onClick={() => handleStatusChange('accepted')}
+                  loading={isLoading.status}
                 >
-                  Accept & Convert to Permit
+                  Mark as Accepted
                 </Button>
                 
                 <Button
@@ -468,93 +526,177 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
                   className="w-full"
                   variant="light"
                   onClick={() => handleStatusChange('declined')}
+                  loading={isLoading.status}
                 >
-                  Decline Proposal
+                  Mark as Declined
                 </Button>
               </div>
             )}
             
-            {proposal.status === 'accepted' && !proposal.permitId && (
+            {proposal.status === 'accepted' && (
               <div>
-                <Button
-                  icon={Check}
-                  color="green"
-                  className="w-full"
-                  onClick={handleConvertToPermit}
-                >
-                  Convert to Permit
-                </Button>
-                <Text className="text-xs text-gray-500 mt-2">
-                  This proposal is accepted but hasn't been converted to a permit yet.
-                </Text>
-              </div>
-            )}
-            
-            {proposal.status === 'accepted' && proposal.permitId && (
-              <div>
-                <Link href={`/permits/${proposal.permitId}`}>
-                  <Button color="green" className="w-full">
-                    View Permit
+                {proposal.permitId ? (
+                  <Link href={`/permits/${proposal.permitId}`}>
+                    <Button color="green" className="w-full mb-2">
+                      View Permit
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    icon={Copy}
+                    color="green"
+                    className="w-full"
+                    onClick={() => setShowConvertConfirm(true)}
+                    loading={isLoading.convert}
+                  >
+                    Convert to Permit
                   </Button>
-                </Link>
+                )}
+                
                 <Text className="text-xs text-gray-500 mt-2">
-                  This proposal has been converted to a permit.
+                  {proposal.permitId 
+                    ? `This proposal has been converted to permit #${permit?.permitNumber}.` 
+                    : "Converting to a permit will create a new permit with all the items from this proposal."}
                 </Text>
               </div>
             )}
             
             {proposal.status === 'declined' && (
-              <Text className="text-red-500">
-                This proposal has been declined.
-              </Text>
+              <div>
+                <Button
+                  icon={Edit}
+                  color="blue"
+                  className="w-full"
+                  onClick={() => router.push(`/proposals/${id}/edit`)}
+                >
+                  Edit & Revise
+                </Button>
+                
+                <Text className="text-xs text-gray-500 mt-2">
+                  You can edit this proposal and send a revised version to the client.
+                </Text>
+              </div>
             )}
           </Card>
           
-          {/* Status History Card - for future use */}
-          <Card className="p-6">
-            <Title className="text-lg mb-4">Status</Title>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className={`h-4 w-4 rounded-full ${proposal.status === 'draft' ? 'bg-gray-500' : 'bg-gray-200'} mr-3`}></div>
-                <div>
-                  <Text className="font-medium">Draft</Text>
-                  <Text className="text-xs text-gray-500">Created on {proposal.createdAt.split('T')[0]}</Text>
-                </div>
-              </div>
+          {/* Client Card */}
+          {client && (
+            <Card className="p-6">
+              <Title className="text-lg mb-4">Client Information</Title>
               
-              <div className="flex items-center">
-                <div className={`h-4 w-4 rounded-full ${proposal.status === 'sent' ? 'bg-blue-500' : (proposal.status === 'accepted' || proposal.status === 'declined') ? 'bg-gray-200' : 'bg-gray-100'} mr-3`}></div>
+              <div className="space-y-3">
                 <div>
-                  <Text className="font-medium">Sent</Text>
-                  <Text className="text-xs text-gray-500">
-                    {proposal.status === 'draft' ? 'Not sent yet' : 'Sent to client'}
+                  <Text className="text-sm text-gray-500">Name</Text>
+                  <Text className="font-medium">{client.name}</Text>
+                </div>
+                
+                {client.contactPerson && (
+                  <div>
+                    <Text className="text-sm text-gray-500">Contact Person</Text>
+                    <Text className="font-medium">{client.contactPerson}</Text>
+                  </div>
+                )}
+                
+                <div>
+                  <Text className="text-sm text-gray-500">Email</Text>
+                  <Text className="font-medium">{client.email}</Text>
+                </div>
+                
+                <div>
+                  <Text className="text-sm text-gray-500">Phone</Text>
+                  <Text className="font-medium">{client.phone}</Text>
+                </div>
+                
+                <div>
+                  <Text className="text-sm text-gray-500">Address</Text>
+                  <Text className="font-medium">
+                    {client.address}<br />
+                    {client.city}, {client.state} {client.zipCode}
                   </Text>
                 </div>
+                
+                <Link href={`/clients/${client.id}`}>
+                  <Button 
+                    variant="light" 
+                    color="gray" 
+                    className="w-full mt-2"
+                  >
+                    View Client Details
+                  </Button>
+                </Link>
               </div>
-              
-              <div className="flex items-center">
-                <div className={`h-4 w-4 rounded-full ${proposal.status === 'accepted' ? 'bg-green-500' : proposal.status === 'declined' ? 'bg-gray-200' : 'bg-gray-100'} mr-3`}></div>
-                <div>
-                  <Text className="font-medium">Accepted</Text>
-                  <Text className="text-xs text-gray-500">
-                    {proposal.status === 'accepted' ? 'Converted to permit' : 'Pending client approval'}
-                  </Text>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className={`h-4 w-4 rounded-full ${proposal.status === 'declined' ? 'bg-red-500' : 'bg-gray-100'} mr-3`}></div>
-                <div>
-                  <Text className="font-medium">Declined</Text>
-                  <Text className="text-xs text-gray-500">
-                    {proposal.status === 'declined' ? 'Client declined' : 'Not applicable'}
-                  </Text>
-                </div>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
         </div>
       </div>
+      
+      {/* Conversion Confirmation Modal */}
+      {showConvertConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
+            <div className="text-center mb-4">
+              <div className="inline-flex items-center justify-center bg-green-100 rounded-full p-3 mb-4">
+                <Copy className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-medium">Convert to Permit</h3>
+              <p className="text-gray-500 mt-2">
+                Are you sure you want to convert this proposal to a permit? This will create a new permit with all the items from this proposal.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="light"
+                color="gray"
+                onClick={() => setShowConvertConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="green"
+                onClick={handleConvertToPermit}
+                loading={isLoading.convert}
+              >
+                Convert to Permit
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
+            <div className="text-center mb-4">
+              <div className="inline-flex items-center justify-center bg-red-100 rounded-full p-3 mb-4">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-medium">Delete Proposal</h3>
+              <p className="text-gray-500 mt-2">
+                Are you sure you want to delete this proposal? This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="light"
+                color="gray"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="red"
+                onClick={confirmDelete}
+              >
+                Delete Proposal
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
     </DashboardLayout>
   );
 } 

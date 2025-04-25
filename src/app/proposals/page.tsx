@@ -27,12 +27,14 @@ import {
   SendIcon as Send, 
   EyeIcon as Eye, 
   Trash2Icon as Trash2, 
-  EditIcon as Edit 
+  EditIcon as Edit,
+  CopyIcon as Copy
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { Proposal, ProposalStatus } from '@/lib/types';
+import { useToast } from '@/components/ui';
 
 // Status badge color mapping
 const statusColors: Record<ProposalStatus, string> = {
@@ -45,6 +47,7 @@ const statusColors: Record<ProposalStatus, string> = {
 export default function ProposalsPage() {
   const { proposals, clients, getClientById, deleteProposal } = useAppContext();
   const router = useRouter();
+  const { toast } = useToast();
   
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,6 +69,11 @@ export default function ProposalsPage() {
     deleteProposal(proposalToDelete);
     setProposalToDelete(null);
     setShowDeleteModal(false);
+    
+    toast({
+      title: 'Proposal Deleted',
+      description: 'The proposal has been permanently deleted.'
+    });
   };
   
   // Filter proposals based on search and filters
@@ -108,6 +116,17 @@ export default function ProposalsPage() {
     router.push(`/proposals/${proposalId}?action=email`);
   };
   
+  // Handle convert to permit
+  const handleConvertToPermit = (proposalId: string) => {
+    router.push(`/proposals/${proposalId}?action=convert`);
+  };
+  
+  // Cancel deletion modal
+  const cancelDelete = () => {
+    setProposalToDelete(null);
+    setShowDeleteModal(false);
+  };
+
   return (
     <DashboardLayout title="Proposals">
       <div className="mb-6 flex justify-between items-center">
@@ -198,100 +217,101 @@ export default function ProposalsPage() {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredProposals.map((proposal) => (
                   <tr key={proposal.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        <Link 
-                          href={`/proposals/${proposal.id}`}
-                          className="text-blue-600 hover:underline font-medium"
-                        >
-                          {proposal.id.slice(0, 8)}
-                        </Link>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{proposal.title}</div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <Link href={`/proposals/${proposal.id}`} className="hover:text-indigo-600 font-medium">
+                        {proposal.id}
+                      </Link>
                       {proposal.permitId && (
-                        <div className="text-xs text-gray-500">
-                          <Link href={`/permits/${proposal.permitId}`} className="hover:text-blue-600">
-                            Linked to Permit
-                          </Link>
-                        </div>
+                        <Badge color="emerald" className="ml-2">
+                          Has Permit
+                        </Badge>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        <Link href={`/clients/${proposal.clientId}`} className="hover:text-blue-600">
-                          {getClientName(proposal.clientId)}
-                        </Link>
-                      </div>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      {proposal.title}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {getClientName(proposal.clientId)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {proposal.date}
-                      <div className="text-xs text-gray-400">
-                        Valid until: {proposal.validUntil}
-                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatCurrency(proposal.totalAmount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge color={statusColors[proposal.status] as any}>
+                      <Badge color={statusColors[proposal.status]}>
                         {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        <Link href={`/proposals/${proposal.id}`}>
-                          <Button
-                            icon={Eye}
-                            variant="light"
-                            color="gray"
-                            tooltip="View"
-                            size="xs"
-                          />
-                        </Link>
-                        <Link href={`/proposals/${proposal.id}/edit`}>
-                          <Button
-                            icon={Edit}
-                            variant="light"
-                            color="blue"
-                            tooltip="Edit"
-                            size="xs"
-                          />
-                        </Link>
-                        <Button
-                          icon={FileText}
-                          variant="light"
-                          color="green"
-                          tooltip="Preview PDF"
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
+                      <Link href={`/proposals/${proposal.id}`}>
+                        <Button 
                           size="xs"
-                          onClick={() => handlePreviewPdf(proposal.id)}
+                          icon={Eye}
+                          variant="light"
+                          color="gray"
+                          tooltip="View Details"
                         />
-                        <Button
+                      </Link>
+                      
+                      <Button 
+                        size="xs"
+                        icon={FileText}
+                        variant="light"
+                        color="blue"
+                        onClick={() => handlePreviewPdf(proposal.id)}
+                        tooltip="View PDF"
+                      />
+                      
+                      {(proposal.status === 'draft' || proposal.status === 'sent') && (
+                        <Button 
+                          size="xs"
                           icon={Send}
                           variant="light"
                           color="purple"
-                          tooltip="Send Email"
-                          size="xs"
                           onClick={() => handleSendEmail(proposal.id)}
+                          tooltip="Email Client"
                         />
-                        <Button
-                          icon={Trash2}
-                          variant="light"
-                          color="red"
-                          tooltip="Delete"
+                      )}
+                      
+                      {!proposal.permitId && proposal.status !== 'declined' && (
+                        <Button 
                           size="xs"
-                          onClick={() => confirmDelete(proposal.id)}
+                          icon={Copy}
+                          variant="light"
+                          color="green"
+                          onClick={() => handleConvertToPermit(proposal.id)}
+                          tooltip="Convert to Permit"
                         />
-                      </div>
+                      )}
+                      
+                      <Link href={`/proposals/${proposal.id}/edit`}>
+                        <Button 
+                          size="xs"
+                          icon={Edit}
+                          variant="light"
+                          color="gray"
+                          tooltip="Edit"
+                        />
+                      </Link>
+                      
+                      <Button 
+                        size="xs"
+                        icon={Trash2}
+                        variant="light"
+                        color="red"
+                        onClick={() => confirmDelete(proposal.id)}
+                        tooltip="Delete"
+                      />
                     </td>
                   </tr>
                 ))}
@@ -301,30 +321,28 @@ export default function ProposalsPage() {
         )}
       </div>
       
-      {/* Delete confirmation modal */}
+      {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium mb-4">Confirm Deletion</h3>
-            <p className="text-gray-700 mb-4">
+            <h3 className="text-lg font-medium mb-2">Delete Proposal</h3>
+            <p className="text-gray-600 mb-4">
               Are you sure you want to delete this proposal? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setProposalToDelete(null);
-                }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              <Button 
+                color="gray" 
+                variant="light" 
+                onClick={cancelDelete}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button 
+                color="red" 
                 onClick={handleDeleteProposal}
-                className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg"
               >
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>

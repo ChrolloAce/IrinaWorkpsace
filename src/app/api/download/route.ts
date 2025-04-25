@@ -1,46 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPdfData } from '@/lib/server-state';
+import { getPdfData, clearPdfData } from '@/lib/server-state';
 
 // Force Edge runtime to maintain consistent global state
 export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the PDF ID from the URL
+    // Get the PDF ID from the query parameter
     const url = new URL(request.url);
-    const pdfId = url.searchParams.get('id');
-    
-    if (!pdfId) {
-      return new NextResponse('PDF ID is required', { status: 400 });
+    const id = url.searchParams.get('id');
+
+    if (!id) {
+      return new NextResponse('Missing PDF ID', { status: 400 });
     }
-    
-    // Check if the PDF exists in our cache
-    const pdfData = await getPdfData(pdfId);
-    
+
+    // Get the PDF data from the cache
+    const pdfData = await getPdfData(id);
+
     if (!pdfData) {
-      console.error(`PDF not found in cache: ${pdfId}`);
-      return new NextResponse('PDF not found or expired', { status: 404 });
+      return new NextResponse('PDF not found. It may have expired.', { status: 404 });
     }
+
+    // Create the response with the PDF data
+    const binaryData = Buffer.from(
+      pdfData.data.replace(/^data:application\/pdf;base64,/, ''), 
+      'base64'
+    );
+
+    // Clear the PDF data from the cache after it's been downloaded
+    // This helps with memory management
+    setTimeout(() => clearPdfData(id), 60000); // Delete after 1 minute
     
-    // Log the found PDF data for debugging
-    console.log(`Found PDF in cache: ${pdfId}, filename: ${pdfData.fileName}`);
-    
-    // Extract the binary data from the data URI
-    const base64Data = pdfData.data.split('base64,')[1];
-    const binaryData = Buffer.from(base64Data, 'base64');
-    
-    // Set the appropriate headers
-    const headers = new Headers();
-    headers.set('Content-Type', pdfData.contentType);
-    headers.set('Content-Disposition', `attachment; filename="${pdfData.fileName}"`);
-    
-    // Return the file
+    // Return the PDF with appropriate headers
     return new NextResponse(binaryData, {
-      status: 200,
-      headers,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${pdfData.fileName}"`,
+        'Content-Length': binaryData.length.toString(),
+      }
     });
   } catch (error) {
-    console.error('Error downloading file:', error);
-    return new NextResponse('Error downloading file', { status: 500 });
+    console.error('Error retrieving PDF:', error);
+    return new NextResponse('Internal server error', { status: 500 });
   }
 } 

@@ -507,17 +507,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Convert an approved proposal to a permit
   const convertProposalToPermit = (proposalId: string) => {
     const proposal = proposals.find(p => p.id === proposalId);
-    if (!proposal || proposal.status !== 'accepted') return;
+    if (!proposal) return;
 
+    // If the proposal already has a linked permit, just return that ID
+    if (proposal.permitId) {
+      return proposal.permitId;
+    }
+
+    // Find the client to get their branch information
+    const client = clients.find(c => c.id === proposal.clientId);
+    if (!client) return;
+
+    // Get client's branches to set a proper location
+    const branches = getClientBranches(client.id);
+    const mainBranch = branches.find(b => b.isMainLocation);
+    
+    // Use the main branch or first available branch for location
+    const branch = mainBranch || (branches.length > 0 ? branches[0] : null);
+    
+    // Create location string from branch data if available
+    let location = '';
+    if (branch) {
+      location = `${branch.name}, ${branch.address}, ${branch.city}, ${branch.state} ${branch.zipCode}`;
+    } else {
+      // Fallback to client address if no branches
+      location = `${client.name}, ${client.address}, ${client.city || ''}, ${client.state || ''} ${client.zipCode || ''}`;
+    }
+
+    // Determine permit type from proposal title or default to Commercial
+    let permitType = 'Commercial';
+    const typeMatches = {
+      'construction': 'Construction',
+      'renovation': 'Renovation',
+      'electrical': 'Electrical',
+      'plumbing': 'Plumbing',
+      'mechanical': 'Mechanical',
+      'demolition': 'Demolition',
+      'signage': 'Signage',
+      'installation': 'Installation'
+    };
+    
+    // Try to detect permit type from the proposal title
+    const titleLower = proposal.title.toLowerCase();
+    for (const [key, value] of Object.entries(typeMatches)) {
+      if (titleLower.includes(key)) {
+        permitType = value;
+        break;
+      }
+    }
+
+    // Generate a permit number
+    const permitNumber = generatePermitNumber();
+    
     // Create a permit based on the proposal data
     const newPermitData = {
       title: proposal.title,
       clientId: proposal.clientId,
-      permitType: 'Commercial', // Default type
+      permitType,
       status: 'draft' as PermitStatus,
-      location: '', // This will need to be filled in later
+      location,
       description: proposal.scope,
-      permitNumber: `P-${nextPermitNumber}`
     };
 
     // Add the permit
@@ -533,10 +582,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    // Update proposal to link it to the permit
+    // Update proposal to link it to the permit and mark as accepted
     updateProposal(proposalId, { 
+      status: 'accepted',
       permitId,
-      notes: (proposal.notes || '') + `\nConverted to Permit #${newPermitData.permitNumber} on ${getTodayFormatted()}`
+      notes: (proposal.notes || '') + `\nConverted to Permit #${permitNumber} on ${getTodayFormatted()}`
     });
 
     // Return the new permit ID

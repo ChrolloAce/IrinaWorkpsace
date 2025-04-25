@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import Link from 'next/link';
-import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle, FiFileText, FiMail } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle, FiFileText, FiMail, FiMapPin } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import PermitChecklist from '@/components/permits/PermitChecklist';
@@ -20,8 +20,10 @@ export default function PermitDetailPage() {
   const {
     permits,
     clients,
+    clientBranches,
     getPermitById,
     getClientById,
+    getClientBranches,
     getPermitChecklistItems,
     getChecklistProgress,
     updatePermit,
@@ -34,6 +36,7 @@ export default function PermitDetailPage() {
   const permit = permits.find(p => p.id === permitId);
   const client = permit ? clients.find(c => c.id === permit.clientId) : null;
   const permitChecklists = getPermitChecklistItems(permitId);
+  const branches = client ? getClientBranches(client.id) : [];
   
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +46,10 @@ export default function PermitDetailPage() {
   const [generatedPdfId, setGeneratedPdfId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadData, setDownloadData] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
+  const [showEmailEditor, setShowEmailEditor] = useState(false);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+  
+  const editForm = {
     title: permit?.title || '',
     permitType: permit?.permitType || '',
     status: permit?.status || 'draft',
@@ -51,13 +57,16 @@ export default function PermitDetailPage() {
     description: permit?.description || '',
     assignedTo: permit?.assignedTo || '',
     expiresAt: permit?.expiresAt || '',
-  });
+    branchId: selectedBranchId
+  };
   
   // Progress percentage based on checklist items
   const progress = getChecklistProgress(permitId);
   
-  // Add state for email editor modal
-  const [showEmailEditor, setShowEmailEditor] = useState(false);
+  // Handle opening email editor directly (not tied to invoice)
+  const handleOpenEmailEditor = () => {
+    setShowEmailEditor(true);
+  };
   
   if (!permit) {
     return (
@@ -294,6 +303,12 @@ export default function PermitDetailPage() {
                 <h1 className="text-2xl font-semibold">{permit.title}</h1>
                 <div className="flex space-x-2">
                   <button
+                    onClick={handleOpenEmailEditor}
+                    className="btn-secondary flex items-center"
+                  >
+                    <FiMail className="mr-2" /> Send Email
+                  </button>
+                  <button
                     onClick={() => setShowInvoiceModal(true)}
                     className="btn-primary flex items-center"
                   >
@@ -477,7 +492,7 @@ export default function PermitDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Permit Type</p>
                       <p className="font-medium">{permit.permitType}</p>
@@ -518,6 +533,83 @@ export default function PermitDetailPage() {
                     <p className="whitespace-pre-wrap">{permit.description}</p>
                   </div>
                 </div>
+              )}
+            </div>
+            
+            {/* Client & Branch Information */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 w-full">
+              <h2 className="text-lg font-semibold mb-4">Client Information</h2>
+              
+              {client ? (
+                <div className="space-y-4">
+                  <div className="border-b pb-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Client Name</p>
+                        <p className="font-medium">{client.name}</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm text-gray-500">Contact Person</p>
+                        <p className="font-medium">{client.contactPerson || client.name}</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm text-gray-500">Email</p>
+                        <p className="font-medium">{client.email}</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm text-gray-500">Phone</p>
+                        <p className="font-medium">{client.phone}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {branches.length > 0 && (
+                    <div>
+                      <div className="flex items-center mb-3">
+                        <FiMapPin className="mr-2 text-gray-500" />
+                        <h3 className="text-md font-medium">Client Branches</h3>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {branches.map(branch => (
+                          <div key={branch.id} className="border p-3 rounded-lg">
+                            <div className="flex justify-between">
+                              <div className="font-medium">{branch.name}</div>
+                              {branch.isMainLocation && (
+                                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                  Main Location
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {branch.address}, {branch.city}, {branch.state} {branch.zipCode}
+                            </div>
+                            {branch.contactPerson && (
+                              <div className="text-sm mt-2">
+                                Contact: {branch.contactPerson}
+                                {branch.phone && <span> • {branch.phone}</span>}
+                                {branch.email && <div>{branch.email}</div>}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-3">
+                    <Link href={`/clients/${client.id}`}>
+                      <button className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center">
+                        View full client details
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500">Client information not available</p>
               )}
             </div>
           </div>
@@ -644,7 +736,7 @@ export default function PermitDetailPage() {
           </div>
         )}
         
-        {/* Add Email Editor Modal */}
+        {/* Email Editor Modal */}
         {showEmailEditor && client && permit && (
           <EmailEditorModal
             isOpen={showEmailEditor}

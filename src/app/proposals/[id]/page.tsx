@@ -4,38 +4,29 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import { useAppContext } from '@/lib/context';
-import { 
-  Card, 
-  Title, 
-  Text, 
-  Flex, 
-  Button, 
-  Badge, 
-  Divider 
-} from '@/components/ui';
-import { 
-  ArrowLeftIcon as ArrowLeft, 
-  FileTextIcon as FileText, 
-  SendIcon as Send,
-  CheckIcon as Check,
-  XIcon as X,
-  EditIcon as Edit,
-  TrashIcon as Trash,
-  CopyIcon as Copy,
-  AlertCircleIcon as AlertCircle
-} from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { generateProposalAction, sendProposalEmailAction } from '@/app/actions/proposal-actions';
 import { ProposalStatus } from '@/lib/types';
+import { 
+  FiArrowLeft, 
+  FiFileText, 
+  FiSend,
+  FiCheck,
+  FiX,
+  FiEdit,
+  FiTrash,
+  FiCopy,
+  FiAlertCircle
+} from 'react-icons/fi';
 
 // Status badge color mapping
 const statusColors: Record<ProposalStatus, string> = {
-  'draft': 'gray',
-  'sent': 'blue',
-  'accepted': 'green',
-  'declined': 'red'
+  'draft': 'bg-gray-100 text-gray-800',
+  'sent': 'bg-blue-100 text-blue-800',
+  'accepted': 'bg-green-100 text-green-800',
+  'declined': 'bg-red-100 text-red-800'
 };
 
 export default function ProposalDetailPage({ params }: { params: { id: string } }) {
@@ -73,17 +64,17 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
   if (!proposal) {
     return (
       <DashboardLayout title="Proposal Not Found">
-        <Card className="p-6">
-          <Flex justifyContent="center" className="h-40">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex justify-center items-center h-40">
             <div className="text-center">
-              <Title className="mb-2">Proposal Not Found</Title>
-              <Text>The proposal you are looking for does not exist or has been deleted.</Text>
+              <h1 className="text-xl font-semibold mb-2">Proposal Not Found</h1>
+              <p className="text-gray-500">The proposal you are looking for does not exist or has been deleted.</p>
               <Link href="/proposals">
-                <Button className="mt-4">Back to Proposals</Button>
+                <button className="mt-4 btn-primary">Back to Proposals</button>
               </Link>
             </div>
-          </Flex>
-        </Card>
+          </div>
+        </div>
       </DashboardLayout>
     );
   }
@@ -262,83 +253,81 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
       <div className="mb-6 flex justify-between items-center">
         <div>
           <Link href="/proposals">
-            <Button
-              icon={ArrowLeft}
-              variant="light"
-              color="gray"
-              className="mb-2"
+            <button
+              className="flex items-center text-gray-600 hover:text-gray-900 mb-2"
             >
+              <FiArrowLeft className="mr-2" size={16} />
               Back to Proposals
-            </Button>
+            </button>
           </Link>
           <h1 className="text-2xl font-semibold">Proposal Details</h1>
-          <Flex alignItems="center" className="mt-1">
-            <Text>Proposal #{proposal.id}</Text>
-            <Badge color={statusColors[proposal.status]} className="ml-2">
+          <div className="flex items-center mt-1">
+            <span className="text-gray-500">Proposal #{proposal.id.slice(0, 8)}</span>
+            <span className={`ml-2 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[proposal.status]}`}>
               {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
-            </Badge>
+            </span>
             
             {proposal.permitId && (
               <Link href={`/permits/${proposal.permitId}`} className="ml-4">
-                <Badge color="emerald">
+                <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                   Linked to Permit #{permit?.permitNumber}
-                </Badge>
+                </span>
               </Link>
             )}
-          </Flex>
+          </div>
         </div>
         
-        <Flex className="gap-2">
-          <Button
-            icon={FileText}
-            color="blue"
+        <div className="flex gap-2">
+          <button
+            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
             onClick={handleGeneratePdf}
-            loading={isLoading.pdf}
+            disabled={isLoading.pdf}
           >
+            <FiFileText className="mr-2" size={16} />
             View PDF
-          </Button>
+            {isLoading.pdf && <span className="ml-2 animate-spin">↻</span>}
+          </button>
           
           {proposal.status !== 'accepted' && proposal.status !== 'declined' && (
-            <Button
-              icon={Send}
-              color="purple"
+            <button
+              className="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition-colors"
               onClick={handleSendEmail}
-              loading={isLoading.email}
+              disabled={isLoading.email}
             >
+              <FiSend className="mr-2" size={16} />
               Email Client
-            </Button>
+              {isLoading.email && <span className="ml-2 animate-spin">↻</span>}
+            </button>
           )}
           
           <Link href={`/proposals/${id}/edit`}>
-            <Button
-              icon={Edit}
-              variant="light"
-              color="gray"
+            <button
+              className="flex items-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded transition-colors"
             >
+              <FiEdit className="mr-2" size={16} />
               Edit
-            </Button>
+            </button>
           </Link>
           
-          <Button
-            icon={Trash}
-            variant="light"
-            color="red"
+          <button
+            className="flex items-center bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2 rounded transition-colors"
             onClick={handleDelete}
           >
+            <FiTrash className="mr-2" size={16} />
             Delete
-          </Button>
-        </Flex>
+          </button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content - 2/3 width */}
-        <Card className="p-6 lg:col-span-2">
-          <Title className="mb-4">{proposal.title}</Title>
+        <div className="bg-white rounded-xl shadow-sm p-6 lg:col-span-2">
+          <h2 className="text-xl font-bold mb-4">{proposal.title}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <Text className="text-sm text-gray-500 mb-1">Client</Text>
-              <Text className="font-medium">{client?.name || 'Unknown Client'}</Text>
+              <p className="text-sm text-gray-500 mb-1">Client</p>
+              <p className="font-medium">{client?.name || 'Unknown Client'}</p>
               {client && (
                 <div className="mt-2 text-sm">
                   <div>{client.address}</div>
@@ -354,35 +343,35 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
             <div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Text className="text-sm text-gray-500 mb-1">Date</Text>
-                  <Text className="font-medium">{proposal.date}</Text>
+                  <p className="text-sm text-gray-500 mb-1">Date</p>
+                  <p className="font-medium">{proposal.date}</p>
                 </div>
                 <div>
-                  <Text className="text-sm text-gray-500 mb-1">Valid Until</Text>
-                  <Text className="font-medium">{proposal.validUntil}</Text>
+                  <p className="text-sm text-gray-500 mb-1">Valid Until</p>
+                  <p className="font-medium">{proposal.validUntil}</p>
                 </div>
               </div>
               
               <div className="mt-4">
-                <Text className="text-sm text-gray-500 mb-1">Total Amount</Text>
-                <Text className="font-medium text-xl text-green-600">
+                <p className="text-sm text-gray-500 mb-1">Total Amount</p>
+                <p className="font-medium text-xl text-green-600">
                   {formatCurrency(proposal.totalAmount)}
-                </Text>
+                </p>
               </div>
             </div>
           </div>
           
-          <Divider />
+          <hr className="my-6 border-t border-gray-200" />
           
           <div className="my-6">
-            <Text className="font-medium mb-2">Scope of Work</Text>
+            <p className="font-medium mb-2">Scope of Work</p>
             <div className="bg-gray-50 p-4 rounded whitespace-pre-line">
               {proposal.scope}
             </div>
           </div>
           
           <div className="my-6">
-            <Text className="font-medium mb-2">Terms & Conditions</Text>
+            <p className="font-medium mb-2">Terms & Conditions</p>
             <div className="bg-gray-50 p-4 rounded whitespace-pre-line">
               {proposal.terms}
             </div>
@@ -390,67 +379,56 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
           
           {proposal.notes && (
             <div className="my-6">
-              <Text className="font-medium mb-2">Notes</Text>
+              <p className="font-medium mb-2">Notes</p>
               <div className="bg-gray-50 p-4 rounded whitespace-pre-line">
                 {proposal.notes}
               </div>
             </div>
           )}
           
-          <Divider />
-          
-          <div className="mt-6">
-            <Text className="font-medium mb-4">Line Items</Text>
-            
-            <div className="overflow-x-auto">
+          {/* Items Table */}
+          <div className="my-6">
+            <h3 className="font-medium mb-3">Items</h3>
+            <div className="bg-gray-50 rounded overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead>
+                <thead className="bg-gray-100">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Description
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                       Quantity
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                       Unit Price
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                       Total
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {proposal.items.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-4 text-center text-sm text-gray-500">
-                        No items added to this proposal.
+                <tbody className="divide-y divide-gray-200">
+                  {proposal.items.map((item, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.description}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                        {item.quantity}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                        {formatCurrency(item.unitPrice)}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                        {formatCurrency(item.quantity * item.unitPrice)}
                       </td>
                     </tr>
-                  ) : (
-                    proposal.items.map((item, index) => (
-                      <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-4 text-sm text-gray-900">
-                          {item.description}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900 text-right">
-                          {item.quantity}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900 text-right">
-                          {formatCurrency(item.unitPrice)}
-                        </td>
-                        <td className="px-4 py-4 text-sm font-medium text-gray-900 text-right">
-                          {formatCurrency(item.total)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                  
-                  <tr className="bg-gray-50">
-                    <td colSpan={3} className="px-4 py-3 text-right text-sm font-bold">
+                  ))}
+                  <tr className="bg-gray-100">
+                    <td colSpan={3} className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
                       Total Amount:
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-bold text-green-600">
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900 text-right">
                       {formatCurrency(proposal.totalAmount)}
                     </td>
                   </tr>
@@ -458,78 +436,35 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
               </table>
             </div>
           </div>
-        </Card>
+        </div>
         
         {/* Sidebar - 1/3 width */}
-        <div className="space-y-6">
-          {/* Actions Card */}
-          <Card className="p-6">
-            <Title className="text-lg mb-4">Proposal Status</Title>
-            
-            <div className="mb-4">
-              <div className="flex items-center mb-2">
-                <div className={`w-3 h-3 rounded-full mr-2 bg-${statusColors[proposal.status]}-500`}></div>
-                <Text className="font-medium">Current Status: {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}</Text>
-              </div>
-              
-              <Text className="text-sm text-gray-500 mb-4">
-                {proposal.status === 'draft' && 'This proposal is in draft mode and has not been sent to the client yet.'}
-                {proposal.status === 'sent' && 'This proposal has been sent to the client and is awaiting their response.'}
-                {proposal.status === 'accepted' && 'This proposal has been accepted by the client.'}
-                {proposal.status === 'declined' && 'This proposal has been declined by the client.'}
-              </Text>
-            </div>
-            
-            <Divider className="my-4" />
-            
-            <Title className="text-lg mb-4">Actions</Title>
-            
-            {proposal.status === 'draft' && (
-              <div className="mb-4">
-                <Button
-                  icon={Send}
-                  color="blue"
-                  className="w-full mb-2"
-                  onClick={() => handleStatusChange('sent')}
-                  loading={isLoading.status}
-                >
-                  Mark as Sent
-                </Button>
-                
-                <Button
-                  icon={Send}
-                  color="purple"
-                  className="w-full"
-                  onClick={handleSendEmail}
-                  loading={isLoading.email}
-                >
-                  Send to Client
-                </Button>
-              </div>
-            )}
+        <div className="space-y-4">
+          {/* Status Section */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="font-medium mb-3">Proposal Status</h3>
             
             {(proposal.status === 'draft' || proposal.status === 'sent') && (
               <div className="space-y-2">
-                <Button
-                  icon={Check}
-                  color="green"
-                  className="w-full"
+                <button
+                  className="flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors"
                   onClick={() => handleStatusChange('accepted')}
-                  loading={isLoading.status}
+                  disabled={isLoading.status}
                 >
+                  <FiCheck className="mr-2" size={16} />
                   Mark as Accepted
-                </Button>
+                  {isLoading.status && <span className="ml-2 animate-spin">↻</span>}
+                </button>
                 
-                <Button
-                  icon={X}
-                  color="red"
-                  className="w-full"
-                  variant="light"
+                <button
+                  className="flex items-center justify-center w-full bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2 rounded transition-colors"
                   onClick={() => handleStatusChange('declined')}
-                  loading={isLoading.status}
+                  disabled={isLoading.status}
                 >
+                  <FiX className="mr-2" size={16} />
                   Mark as Declined
-                </Button>
+                  {isLoading.status && <span className="ml-2 animate-spin">↻</span>}
+                </button>
               </div>
             )}
             
@@ -537,95 +472,51 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
               <div>
                 {proposal.permitId ? (
                   <Link href={`/permits/${proposal.permitId}`}>
-                    <Button color="green" className="w-full mb-2">
+                    <button className="flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors mb-2">
                       View Permit
-                    </Button>
+                    </button>
                   </Link>
                 ) : (
-                  <Button
-                    icon={Copy}
-                    color="green"
-                    className="w-full"
+                  <button
+                    className="flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors"
                     onClick={() => setShowConvertConfirm(true)}
-                    loading={isLoading.convert}
+                    disabled={isLoading.convert}
                   >
+                    <FiCopy className="mr-2" size={16} />
                     Convert to Permit
-                  </Button>
+                    {isLoading.convert && <span className="ml-2 animate-spin">↻</span>}
+                  </button>
                 )}
                 
-                <Text className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   {proposal.permitId 
                     ? `This proposal has been converted to permit #${permit?.permitNumber}.` 
                     : "Converting to a permit will create a new permit with all the items from this proposal."}
-                </Text>
+                </p>
               </div>
             )}
-            
-            {proposal.status === 'declined' && (
-              <div>
-                <Button
-                  icon={Edit}
-                  color="blue"
-                  className="w-full"
-                  onClick={() => router.push(`/proposals/${id}/edit`)}
-                >
-                  Edit & Revise
-                </Button>
-                
-                <Text className="text-xs text-gray-500 mt-2">
-                  You can edit this proposal and send a revised version to the client.
-                </Text>
-              </div>
-            )}
-          </Card>
+          </div>
           
-          {/* Client Card */}
+          {/* Client Information */}
           {client && (
-            <Card className="p-6">
-              <Title className="text-lg mb-4">Client Information</Title>
-              
-              <div className="space-y-3">
-                <div>
-                  <Text className="text-sm text-gray-500">Name</Text>
-                  <Text className="font-medium">{client.name}</Text>
-                </div>
-                
-                {client.contactPerson && (
-                  <div>
-                    <Text className="text-sm text-gray-500">Contact Person</Text>
-                    <Text className="font-medium">{client.contactPerson}</Text>
-                  </div>
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="font-medium mb-3">Client Information</h3>
+              <div className="text-sm mb-4">
+                <div className="font-medium">{client.name}</div>
+                <div className="text-gray-500 mt-1">{client.email}</div>
+                <div className="text-gray-500">{client.phone}</div>
+                <div className="mt-2">{client.address}</div>
+                {client.city && (
+                  <div>{client.city}, {client.state} {client.zipCode}</div>
                 )}
-                
-                <div>
-                  <Text className="text-sm text-gray-500">Email</Text>
-                  <Text className="font-medium">{client.email}</Text>
-                </div>
-                
-                <div>
-                  <Text className="text-sm text-gray-500">Phone</Text>
-                  <Text className="font-medium">{client.phone}</Text>
-                </div>
-                
-                <div>
-                  <Text className="text-sm text-gray-500">Address</Text>
-                  <Text className="font-medium">
-                    {client.address}<br />
-                    {client.city}, {client.state} {client.zipCode}
-                  </Text>
-                </div>
-                
-                <Link href={`/clients/${client.id}`}>
-                  <Button 
-                    variant="light" 
-                    color="gray" 
-                    className="w-full mt-2"
-                  >
-                    View Client Details
-                  </Button>
-                </Link>
               </div>
-            </Card>
+              
+              <Link href={`/clients/${client.id}`}>
+                <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors mt-2">
+                  View Client Details
+                </button>
+              </Link>
+            </div>
           )}
         </div>
       </div>
@@ -636,7 +527,7 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
           <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
             <div className="text-center mb-4">
               <div className="inline-flex items-center justify-center bg-green-100 rounded-full p-3 mb-4">
-                <Copy className="h-6 w-6 text-green-600" />
+                <FiCopy className="h-6 w-6 text-green-600" />
               </div>
               <h3 className="text-lg font-medium">Convert to Permit</h3>
               <p className="text-gray-500 mt-2">
@@ -645,20 +536,23 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
             </div>
             
             <div className="flex justify-end space-x-3 mt-6">
-              <Button
-                variant="light"
-                color="gray"
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 onClick={() => setShowConvertConfirm(false)}
               >
                 Cancel
-              </Button>
-              <Button
-                color="green"
+              </button>
+              <button
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                 onClick={handleConvertToPermit}
-                loading={isLoading.convert}
+                disabled={isLoading.convert}
               >
-                Convert to Permit
-              </Button>
+                {isLoading.convert ? (
+                  <span className="flex items-center">
+                    <span className="animate-spin mr-2">↻</span> Converting...
+                  </span>
+                ) : "Convert to Permit"}
+              </button>
             </div>
           </div>
         </div>
@@ -667,36 +561,28 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
-            <div className="text-center mb-4">
-              <div className="inline-flex items-center justify-center bg-red-100 rounded-full p-3 mb-4">
-                <AlertCircle className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-medium">Delete Proposal</h3>
-              <p className="text-gray-500 mt-2">
-                Are you sure you want to delete this proposal? This action cannot be undone.
-              </p>
-            </div>
-            
-            <div className="flex justify-end space-x-3 mt-6">
-              <Button
-                variant="light"
-                color="gray"
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-medium mb-2">Delete Proposal</h3>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete this proposal? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button 
                 onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
                 Cancel
-              </Button>
-              <Button
-                color="red"
+              </button>
+              <button 
                 onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               >
-                Delete Proposal
-              </Button>
+                Delete
+              </button>
             </div>
           </div>
         </div>
       )}
-      
     </DashboardLayout>
   );
 } 

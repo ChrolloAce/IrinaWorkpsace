@@ -5,13 +5,8 @@ import DashboardLayout from '../dashboard-layout';
 import Link from 'next/link';
 import { 
   FiPlus,
-  FiSearch, 
-  FiFileText, 
-  FiSend, 
-  FiEye, 
   FiTrash2, 
   FiEdit2,
-  FiCopy,
   FiAlertCircle
 } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
@@ -112,17 +107,17 @@ export default function ProposalsPage() {
   
   // Handle preview PDF
   const handlePreviewPdf = (proposalId: string) => {
-    router.push(`/proposals/${proposalId}?action=preview`);
+    router.push(`/proposals/${proposalId}`);
   };
   
   // Handle send email
   const handleSendEmail = (proposalId: string) => {
-    router.push(`/proposals/${proposalId}?action=email`);
+    router.push(`/proposals/${proposalId}`);
   };
   
   // Handle convert to permit
   const handleConvertToPermit = (proposalId: string) => {
-    router.push(`/proposals/${proposalId}?action=convert`);
+    router.push(`/proposals/${proposalId}`);
   };
   
   // Cancel deletion modal
@@ -272,37 +267,12 @@ export default function ProposalsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <Link href={`/proposals/${proposal.id}`} className="text-gray-400 hover:text-gray-600">
-                          <FiEye size={18} title="View" />
-                        </Link>
-                        <Link href={`/proposals/${proposal.id}/edit`} className="text-gray-400 hover:text-blue-600">
+                        <Link href={`/proposals/${proposal.id}`} className="text-indigo-600 hover:text-blue-600">
                           <FiEdit2 size={18} title="Edit" />
                         </Link>
                         <button 
-                          onClick={() => handlePreviewPdf(proposal.id)} 
-                          className="text-gray-400 hover:text-green-600"
-                        >
-                          <FiFileText size={18} title="View PDF" />
-                        </button>
-                        {(proposal.status === 'draft' || proposal.status === 'sent') && (
-                          <button 
-                            onClick={() => handleSendEmail(proposal.id)} 
-                            className="text-gray-400 hover:text-purple-600"
-                          >
-                            <FiSend size={18} title="Email Client" />
-                          </button>
-                        )}
-                        {!proposal.permitId && proposal.status !== 'declined' && (
-                          <button 
-                            onClick={() => handleConvertToPermit(proposal.id)} 
-                            className="text-gray-400 hover:text-green-600"
-                          >
-                            <FiCopy size={18} title="Convert to Permit" />
-                          </button>
-                        )}
-                        <button 
                           onClick={() => confirmDelete(proposal.id)} 
-                          className="text-gray-400 hover:text-red-600"
+                          className="text-red-600 hover:text-red-600"
                         >
                           <FiTrash2 size={18} title="Delete" />
                         </button>

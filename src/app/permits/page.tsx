@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../dashboard-layout';
 import Link from 'next/link';
-import { FiPlus, FiMoreVertical, FiEdit2, FiTrash2, FiCheckSquare, FiAlertCircle } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
 import { PermitStatus } from '@/lib/types';
 
@@ -223,10 +223,7 @@ export default function PermitsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <Link href={`/permits/${permit.id}/checklist`} className="text-blue-600 hover:text-blue-900" title="Checklist">
-                          <FiCheckSquare size={16} />
-                        </Link>
-                        <Link href={`/permits/${permit.id}/edit`} className="text-indigo-600 hover:text-indigo-900" title="Edit">
+                        <Link href={`/permits/${permit.id}`} className="text-indigo-600 hover:text-indigo-900" title="Edit">
                           <FiEdit2 size={16} />
                         </Link>
                         <button 
@@ -236,9 +233,6 @@ export default function PermitsPage() {
                         >
                           <FiTrash2 size={16} />
                         </button>
-                        <Link href={`/permits/${permit.id}`} className="text-gray-400 hover:text-gray-600" title="More">
-                          <FiMoreVertical size={16} />
-                        </Link>
                       </div>
                     </td>
                   </tr>

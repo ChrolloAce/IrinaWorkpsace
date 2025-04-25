@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import { useAppContext } from '@/lib/context';
 import Link from 'next/link';
@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { generateProposalAction, sendProposalEmailAction } from '@/app/actions/proposal-actions';
 import { ProposalStatus } from '@/lib/types';
+import EmailEditorModal from '@/components/EmailEditorModal';
 import { 
   FiArrowLeft, 
   FiFileText, 
@@ -46,6 +47,7 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({});
   const [showConvertConfirm, setShowConvertConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEmailEditor, setShowEmailEditor] = useState(false);
   
   const proposal = getProposalById(id);
   
@@ -164,6 +166,11 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
   
   const handleSendEmail = async () => {
     if (!client) return;
+    setShowEmailEditor(true);
+  };
+  
+  const handleSendEmailWithCustomContent = async (subject: string, text: string, html: string) => {
+    if (!client) return;
     
     setIsLoading(prev => ({ ...prev, email: true }));
     
@@ -175,12 +182,15 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
         throw new Error(pdfResult.error || 'Failed to generate PDF');
       }
       
-      // Then send the email
+      // Then send the email with custom content
       const emailResult = await sendProposalEmailAction(
         proposal,
         client,
         pdfResult.pdfData as string,
-        pdfResult.fileName || 'proposal.pdf'
+        pdfResult.fileName || 'proposal.pdf',
+        subject,
+        text,
+        html
       );
       
       if (emailResult.success) {
@@ -582,6 +592,19 @@ export default function ProposalDetailPage({ params }: { params: { id: string } 
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Add Email Editor Modal */}
+      {showEmailEditor && client && proposal && (
+        <EmailEditorModal
+          isOpen={showEmailEditor}
+          onClose={() => setShowEmailEditor(false)}
+          onSend={handleSendEmailWithCustomContent}
+          type="proposal"
+          client={client}
+          item={proposal}
+          amount={proposal.totalAmount}
+        />
       )}
     </DashboardLayout>
   );

@@ -17,6 +17,7 @@ import { generateId } from '@/lib/utils';
 import { useAppContext } from '@/lib/context';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import EmailEditorModal from '@/components/EmailEditorModal';
 
 type ProposalFormProps = {
   clients: Client[];
@@ -269,6 +270,9 @@ export default function ProposalForm({
     }
   };
 
+  // Add state for email editor modal
+  const [showEmailEditor, setShowEmailEditor] = useState(false);
+
   // Send proposal via email
   const handleSendEmail = async () => {
     if (!selectedClient) {
@@ -284,12 +288,39 @@ export default function ProposalForm({
         throw new Error('Failed to generate PDF');
       }
       
-      // Then send email with the PDF
+      // Show email editor modal instead of sending immediately
+      setShowEmailEditor(true);
+      
+    } catch (error) {
+      console.error('Error preparing email:', error);
+      setError('Failed to prepare proposal email');
+    }
+  };
+  
+  // New function to handle sending email after editing
+  const handleSendEmailWithCustomContent = async (subject: string, text: string, html: string) => {
+    if (!selectedClient) {
+      setError('Client information is missing');
+      return;
+    }
+    
+    try {
+      // Get PDF data from saved result
+      const pdfResult = await handleGeneratePdf();
+      
+      if (!pdfResult) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      // Then send email with the PDF and custom content
       const emailResult = await sendProposalEmailAction(
         proposal, 
         selectedClient, 
         pdfResult.pdfData, 
-        pdfResult.fileName
+        pdfResult.fileName || `proposal-${proposal.id}.pdf`,
+        subject,
+        text,
+        html
       );
       
       if (emailResult.success) {
@@ -634,6 +665,19 @@ export default function ProposalForm({
           {isEditing ? 'Update Proposal' : 'Create Proposal'}
         </button>
       </div>
+      
+      {/* Email Editor Modal */}
+      {showEmailEditor && selectedClient && (
+        <EmailEditorModal
+          isOpen={showEmailEditor}
+          onClose={() => setShowEmailEditor(false)}
+          onSend={handleSendEmailWithCustomContent}
+          type="proposal"
+          client={selectedClient}
+          item={proposal}
+          amount={proposal.totalAmount}
+        />
+      )}
     </div>
   );
 } 

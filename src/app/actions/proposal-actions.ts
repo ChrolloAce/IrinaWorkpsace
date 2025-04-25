@@ -63,14 +63,17 @@ export async function sendProposalEmailAction(
   proposal: Proposal,
   client: Client,
   pdfData: string,
-  fileName: string
+  fileName: string,
+  customSubject?: string,
+  customText?: string,
+  customHtml?: string
 ) {
   try {
     // Prepare email content
-    const subject = `Proposal: ${proposal.title} - ${proposal.id}`;
+    const subject = customSubject || `Proposal: ${proposal.title} - ${proposal.id}`;
     
     // Simple plain text version
-    const textContent = `
+    const textContent = customText || `
 Dear ${client.contactPerson || client.name},
 
 Please find attached our proposal for ${proposal.title}.
@@ -92,7 +95,7 @@ irina@irhsmart.com
     `;
     
     // HTML version
-    const htmlContent = `
+    const htmlContent = customHtml || `
 <!DOCTYPE html>
 <html>
 <head>

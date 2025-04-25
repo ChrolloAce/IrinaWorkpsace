@@ -1,32 +1,39 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '../../dashboard-layout';
 import Link from 'next/link';
 import { FiArrowLeft, FiEdit, FiTrash, FiCheck, FiX, FiAlertCircle, FiPlusCircle, FiFileText, FiMail } from 'react-icons/fi';
 import { useAppContext } from '@/lib/context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatCurrency } from '@/lib/utils';
 import PermitChecklist from '@/components/permits/PermitChecklist';
 import { generateInvoiceAction, sendInvoiceEmailAction } from '@/app/actions/invoice-actions';
+import { useToast } from '@/components/ui/toast';
+import EmailEditorModal from '@/components/EmailEditorModal';
 
 export default function PermitDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { 
-    permits, 
-    clients, 
-    checklistItems, 
-    updatePermit, 
+  const { toast } = useToast();
+  
+  const {
+    permits,
+    clients,
+    getPermitById,
+    getClientById,
+    getPermitChecklistItems,
+    getChecklistProgress,
+    updatePermit,
     updateChecklistItem, 
     addChecklistItem, 
-    deleteChecklistItem 
+    deleteChecklistItem
   } = useAppContext();
   
   const permitId = params.id as string;
   const permit = permits.find(p => p.id === permitId);
   const client = permit ? clients.find(c => c.id === permit.clientId) : null;
-  const permitChecklists = checklistItems.filter(item => item.permitId === permitId);
+  const permitChecklists = getPermitChecklistItems(permitId);
   
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,9 +54,10 @@ export default function PermitDetailPage() {
   });
   
   // Progress percentage based on checklist items
-  const progress = permitChecklists.length > 0
-    ? Math.round((permitChecklists.filter(item => item.completed).length / permitChecklists.length) * 100)
-    : 0;
+  const progress = getChecklistProgress(permitId);
+  
+  // Add state for email editor modal
+  const [showEmailEditor, setShowEmailEditor] = useState(false);
   
   if (!permit) {
     return (
@@ -76,7 +84,7 @@ export default function PermitDetailPage() {
   };
   
   // Handle adding a new checklist item
-  const handleAddChecklistItem = (item: Omit<typeof checklistItems[0], 'id' | 'permitId' | 'createdAt'>) => {
+  const handleAddChecklistItem = (item: Omit<typeof permitChecklists[0], 'id' | 'permitId' | 'createdAt'>) => {
     addChecklistItem({
       permitId,
       title: item.title,
@@ -184,22 +192,29 @@ export default function PermitDetailPage() {
         throw new Error('Invoice must be generated before sending');
       }
       
+      // Show email editor instead of sending directly
+      setShowEmailEditor(true);
+      
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An error occurred');
+    }
+  };
+  
+  // New function to handle sending invoice email after editing
+  const handleSendInvoiceWithCustomContent = async (subject: string, text: string, html: string) => {
+    try {
+      if (!client?.email) {
+        throw new Error('Client email is required to send the invoice');
+      }
+      
+      if (!generatedPdfId) {
+        throw new Error('Invoice must be generated before sending');
+      }
+      
       // Show loading indicator
       setError('Sending email, please wait...');
       
-      // Generate email content
-      const subject = `Invoice for ${permit.title} - ${permit.permitNumber}`;
-      const text = `Please find attached the invoice for permit ${permit.permitNumber}.`;
-      const html = `
-        <h1>Invoice for ${permit.title}</h1>
-        <p>Dear ${client.name},</p>
-        <p>Please find attached the invoice for permit ${permit.permitNumber}.</p>
-        <p>Total amount: $${totalCost.toFixed(2)}</p>
-        <p>Balance due: $${(totalCost - completedCost).toFixed(2)}</p>
-        <p>Thank you for your business!</p>
-      `;
-      
-      // Call the server action to send the email
+      // Call the server action to send the email with custom content
       const result = await sendInvoiceEmailAction(
         client.email, 
         subject, 
@@ -209,23 +224,17 @@ export default function PermitDetailPage() {
       );
       
       if (result.success) {
-        // Show success message
-        setError('Email sent successfully!');
-        
-        // Close modal after 2 seconds
-        setTimeout(() => {
-          setShowInvoiceModal(false);
-          setInvoiceGenerated(false);
-          setGeneratedPdfId(null);
-          setError(null);
-        }, 2000);
+        setError(null);
+        toast({
+          title: 'Success',
+          description: 'Invoice sent via email!'
+        });
       } else {
         throw new Error(result.error || 'Failed to send email');
       }
-      
-    } catch (error: any) {
-      console.error('Error sending invoice email:', error);
-      setError(error.message || 'Failed to send invoice email');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An error occurred');
+      console.error('Invoice email error:', error);
     }
   };
   
@@ -633,6 +642,20 @@ export default function PermitDetailPage() {
               </div>
             </div>
           </div>
+        )}
+        
+        {/* Add Email Editor Modal */}
+        {showEmailEditor && client && permit && (
+          <EmailEditorModal
+            isOpen={showEmailEditor}
+            onClose={() => setShowEmailEditor(false)}
+            onSend={handleSendInvoiceWithCustomContent}
+            type="invoice"
+            client={client}
+            item={permit}
+            amount={totalCost}
+            balanceDue={totalCost - completedCost}
+          />
         )}
       </div>
     </DashboardLayout>

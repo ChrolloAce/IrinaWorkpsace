@@ -1,0 +1,896 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
+import { Client, Permit, ChecklistItem, PermitStatus, ClientBranch, ChecklistTemplate, TemplateItem, Proposal, Invoice } from './types';
+import { sampleClients, samplePermits, sampleChecklistItems, generatePermitNumber, sampleClientBranches, sampleChecklistTemplates } from './data';
+import { generateId, getTodayFormatted, calculateProgress } from './utils';
+
+// Define the context shape
+interface AppContextType {
+  // Data
+  clients: Client[];
+  permits: Permit[];
+  checklistItems: ChecklistItem[];
+  clientBranches: ClientBranch[];
+  checklistTemplates: ChecklistTemplate[];
+  proposals: Proposal[];
+  invoices: Invoice[];
+  
+  // Client operations
+  addClient: (client: Omit<Client, 'id' | 'createdAt'>) => string;
+  updateClient: (id: string, clientData: Partial<Client>) => void;
+  deleteClient: (id: string) => void;
+  getClientById: (id: string) => Client | undefined;
+  getClientPermits: (clientId: string) => Permit[];
+  
+  // Client branch operations
+  addClientBranch: (branch: Omit<ClientBranch, 'id' | 'createdAt'>) => string;
+  updateClientBranch: (id: string, branchData: Partial<ClientBranch>) => void;
+  deleteClientBranch: (id: string) => void;
+  getClientBranches: (clientId: string) => ClientBranch[];
+  getClientBranchById: (id: string) => ClientBranch | undefined;
+  
+  // Permit operations
+  addPermit: (permit: Omit<Permit, 'id' | 'createdAt' | 'progress' | 'permitNumber'>) => string;
+  updatePermit: (id: string, permitData: Partial<Permit>) => void;
+  deletePermit: (id: string) => void;
+  getPermitById: (id: string) => Permit | undefined;
+  getPermitClient: (permitId: string) => Client | undefined;
+  
+  // Checklist operations
+  addChecklistItem: (item: Omit<ChecklistItem, 'id' | 'createdAt'>) => string;
+  updateChecklistItem: (id: string, data: Partial<ChecklistItem>) => void;
+  deleteChecklistItem: (id: string) => void;
+  getPermitChecklistItems: (permitId: string) => ChecklistItem[];
+  getChecklistProgress: (permitId: string) => number;
+  
+  // Checklist template operations
+  addChecklistTemplate: (template: Omit<ChecklistTemplate, 'id' | 'createdAt'>) => string;
+  updateChecklistTemplate: (id: string, data: Partial<ChecklistTemplate>) => void;
+  deleteChecklistTemplate: (id: string) => void;
+  getChecklistTemplateById: (id: string) => ChecklistTemplate | undefined;
+  applyTemplateToPermit: (templateId: string, permitId: string) => void;
+  
+  // Proposal operations
+  getProposalById: (id: string) => Proposal | undefined;
+  getClientProposals: (clientId: string) => Proposal[];
+  getPermitProposals: (permitId: string) => Proposal[];
+  addProposal: (proposal: Proposal) => void;
+  updateProposal: (id: string, data: Partial<Proposal>) => void;
+  deleteProposal: (id: string) => void;
+  convertProposalToPermit: (proposalId: string) => string | undefined;
+  
+  // Invoice operations
+  getInvoiceById: (id: string) => Invoice | undefined;
+  getClientInvoices: (clientId: string) => Invoice[];
+  getProposalInvoices: (proposalId: string) => Invoice[];
+  addInvoice: (invoice: Invoice) => void;
+  updateInvoice: (id: string, data: Partial<Invoice>) => void;
+  deleteInvoice: (id: string) => void;
+  convertProposalToInvoice: (proposalId: string) => string | undefined;
+  
+  // Dashboard operations
+  getOpenPermits: () => Permit[];
+  getPermitProgress: (permitId: string) => number;
+  
+  // Permit numbering
+  nextPermitNumber: number;
+  incrementPermitNumber: () => void;
+}
+
+// Create the context
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+// Context provider component
+export function AppProvider({ children }: { children: ReactNode }) {
+  // Initialize permit numbering - ensure it's sequential across app restarts
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Update the permit counter to be the highest existing number + 1
+      const storedPermits = localStorage.getItem('permits');
+      if (storedPermits) {
+        const permits = JSON.parse(storedPermits) as Permit[];
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        
+        // Find the highest permit number for the current year
+        let highestCounter = 0;
+        permits.forEach(permit => {
+          // Parse permit numbers in format YY-XXX
+          if (permit.permitNumber && permit.permitNumber.startsWith(currentYear)) {
+            const counterPart = permit.permitNumber.split('-')[1];
+            if (counterPart) {
+              const counter = parseInt(counterPart, 10);
+              if (!isNaN(counter) && counter > highestCounter) {
+                highestCounter = counter;
+              }
+            }
+          }
+        });
+        
+        // Store the highest counter in localStorage
+        localStorage.setItem('permitCounter', highestCounter.toString());
+        localStorage.setItem('permitYear', currentYear);
+      }
+    }
+  }, []);
+
+  // Load data from localStorage or use sample data
+  const [clients, setClients] = useState<Client[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedClients = localStorage.getItem('clients');
+      return storedClients ? JSON.parse(storedClients) : sampleClients;
+    }
+    return sampleClients;
+  });
+  
+  const [permits, setPermits] = useState<Permit[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedPermits = localStorage.getItem('permits');
+      return storedPermits ? JSON.parse(storedPermits) : samplePermits;
+    }
+    return samplePermits;
+  });
+  
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedChecklistItems = localStorage.getItem('checklistItems');
+      return storedChecklistItems ? JSON.parse(storedChecklistItems) : sampleChecklistItems;
+    }
+    return sampleChecklistItems;
+  });
+
+  const [clientBranches, setClientBranches] = useState<ClientBranch[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedBranches = localStorage.getItem('clientBranches');
+      return storedBranches ? JSON.parse(storedBranches) : sampleClientBranches;
+    }
+    return sampleClientBranches;
+  });
+
+  const [checklistTemplates, setChecklistTemplates] = useState<ChecklistTemplate[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedTemplates = localStorage.getItem('checklistTemplates');
+      return storedTemplates ? JSON.parse(storedTemplates) : sampleChecklistTemplates;
+    }
+    return sampleChecklistTemplates;
+  });
+
+  const [proposals, setProposals] = useState<Proposal[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedProposals = localStorage.getItem('proposals');
+      if (storedProposals) {
+        const parsedProposals = JSON.parse(storedProposals) as Proposal[];
+        
+        // Update proposal counter to ensure sequential numbering
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        let highestCounter = 0;
+        
+        parsedProposals.forEach(proposal => {
+          // Parse proposal IDs in format YY-XXX
+          if (proposal.id && proposal.id.startsWith(currentYear + '-')) {
+            const counterPart = proposal.id.split('-')[1];
+            if (counterPart) {
+              const counter = parseInt(counterPart, 10);
+              if (!isNaN(counter) && counter > highestCounter) {
+                highestCounter = counter;
+              }
+            }
+          }
+        });
+        
+        // Store the highest counter in localStorage
+        localStorage.setItem('proposalCounter', highestCounter.toString());
+        localStorage.setItem('proposalYear', currentYear);
+        
+        return parsedProposals;
+      }
+    }
+    return [];
+  });
+
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedInvoices = localStorage.getItem('invoices');
+      if (storedInvoices) {
+        const parsedInvoices = JSON.parse(storedInvoices) as Invoice[];
+        
+        // Update invoice counter to ensure sequential numbering
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        let highestCounter = 0;
+        
+        parsedInvoices.forEach(invoice => {
+          // Parse invoice IDs in format INV-YY-XXX
+          if (invoice.id && invoice.id.startsWith('INV-' + currentYear + '-')) {
+            const counterPart = invoice.id.split('-')[2];
+            if (counterPart) {
+              const counter = parseInt(counterPart, 10);
+              if (!isNaN(counter) && counter > highestCounter) {
+                highestCounter = counter;
+              }
+            }
+          }
+        });
+        
+        // Store the highest counter in localStorage
+        localStorage.setItem('invoiceCounter', highestCounter.toString());
+        localStorage.setItem('invoiceYear', currentYear);
+        
+        return parsedInvoices;
+      }
+    }
+    return [];
+  });
+
+  // Save data to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('clients', JSON.stringify(clients));
+      localStorage.setItem('permits', JSON.stringify(permits));
+      localStorage.setItem('checklistItems', JSON.stringify(checklistItems));
+      localStorage.setItem('clientBranches', JSON.stringify(clientBranches));
+      localStorage.setItem('checklistTemplates', JSON.stringify(checklistTemplates));
+      localStorage.setItem('proposals', JSON.stringify(proposals));
+      localStorage.setItem('invoices', JSON.stringify(invoices));
+    }
+  }, [clients, permits, checklistItems, clientBranches, checklistTemplates, proposals, invoices]);
+
+  // Client operations
+  const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>) => {
+    const id = generateId();
+    const newClient: Client = {
+      ...clientData,
+      id,
+      createdAt: getTodayFormatted(),
+    };
+    setClients([...clients, newClient]);
+    return id;
+  };
+
+  const updateClient = (id: string, clientData: Partial<Client>) => {
+    setClients(prevClients =>
+      prevClients.map(client =>
+        client.id === id ? { ...client, ...clientData } : client
+      )
+    );
+  };
+
+  const deleteClient = (id: string) => {
+    // First check if client has permits
+    const clientPermits = permits.filter(permit => permit.clientId === id);
+    if (clientPermits.length > 0) {
+      throw new Error("Cannot delete client with associated permits");
+    }
+    
+    // Also delete any client branches
+    setClientBranches(prevBranches => 
+      prevBranches.filter(branch => branch.clientId !== id)
+    );
+    
+    setClients(prevClients => prevClients.filter(client => client.id !== id));
+  };
+
+  const getClientById = (id: string) => {
+    return clients.find(client => client.id === id);
+  };
+
+  const getClientPermits = (clientId: string) => {
+    return permits.filter(permit => permit.clientId === clientId);
+  };
+
+  // Client branch operations
+  const addClientBranch = (branchData: Omit<ClientBranch, 'id' | 'createdAt'>) => {
+    const id = generateId();
+    const newBranch: ClientBranch = {
+      ...branchData,
+      id,
+      createdAt: getTodayFormatted(),
+    };
+    
+    // If this is set as main location, update other branches for this client
+    if (branchData.isMainLocation) {
+      setClientBranches(prevBranches =>
+        prevBranches.map(branch =>
+          branch.clientId === branchData.clientId 
+            ? { ...branch, isMainLocation: false } 
+            : branch
+        )
+      );
+    }
+    
+    setClientBranches(prevBranches => [...prevBranches, newBranch]);
+    return id;
+  };
+
+  const updateClientBranch = (id: string, branchData: Partial<ClientBranch>) => {
+    let clientId = '';
+    
+    // If updating isMainLocation to true, set other branches to false
+    if (branchData.isMainLocation) {
+      const branch = clientBranches.find(b => b.id === id);
+      if (branch) {
+        clientId = branch.clientId;
+        setClientBranches(prevBranches =>
+          prevBranches.map(b =>
+            b.clientId === clientId && b.id !== id
+              ? { ...b, isMainLocation: false }
+              : b
+          )
+        );
+      }
+    }
+    
+    setClientBranches(prevBranches =>
+      prevBranches.map(branch =>
+        branch.id === id ? { ...branch, ...branchData } : branch
+      )
+    );
+  };
+
+  const deleteClientBranch = (id: string) => {
+    const branch = clientBranches.find(b => b.id === id);
+    
+    // Don't allow deleting the main location if it's the only branch
+    if (branch && branch.isMainLocation) {
+      const clientBranchCount = clientBranches.filter(
+        b => b.clientId === branch.clientId
+      ).length;
+      
+      if (clientBranchCount === 1) {
+        throw new Error("Cannot delete the only branch location for this client");
+      }
+    }
+    
+    setClientBranches(prevBranches => 
+      prevBranches.filter(branch => branch.id !== id)
+    );
+  };
+
+  const getClientBranches = (clientId: string) => {
+    return clientBranches.filter(branch => branch.clientId === clientId);
+  };
+
+  const getClientBranchById = (id: string) => {
+    return clientBranches.find(branch => branch.id === id);
+  };
+
+  // Permit operations
+  const addPermit = (permitData: Omit<Permit, 'id' | 'createdAt' | 'progress' | 'permitNumber'>) => {
+    const id = generateId();
+    const permitNumber = generatePermitNumber();
+    const newPermit: Permit = {
+      ...permitData,
+      id,
+      createdAt: getTodayFormatted(),
+      progress: 0,
+      permitNumber,
+    };
+    setPermits([...permits, newPermit]);
+    return id;
+  };
+
+  const updatePermit = (id: string, permitData: Partial<Permit>) => {
+    setPermits(prevPermits =>
+      prevPermits.map(permit =>
+        permit.id === id ? { ...permit, ...permitData } : permit
+      )
+    );
+  };
+
+  const deletePermit = (id: string) => {
+    // Also delete associated checklist items
+    setChecklistItems(prevItems => 
+      prevItems.filter(item => item.permitId !== id)
+    );
+    
+    setPermits(prevPermits => 
+      prevPermits.filter(permit => permit.id !== id)
+    );
+  };
+
+  const getPermitById = (id: string) => {
+    return permits.find(permit => permit.id === id);
+  };
+
+  const getPermitClient = (permitId: string) => {
+    const permit = permits.find(p => p.id === permitId);
+    if (!permit) return undefined;
+    return clients.find(client => client.id === permit.clientId);
+  };
+
+  // Checklist operations
+  const addChecklistItem = (itemData: Omit<ChecklistItem, 'id' | 'createdAt'>) => {
+    const id = generateId();
+    const newItem: ChecklistItem = {
+      ...itemData,
+      id,
+      createdAt: getTodayFormatted(),
+    };
+    
+    setChecklistItems(prevItems => [...prevItems, newItem]);
+    
+    // Update permit progress
+    const permitItems = [...checklistItems, newItem].filter(
+      item => item.permitId === itemData.permitId
+    );
+    const progress = calculateProgress(permitItems);
+    
+    updatePermit(itemData.permitId, { progress });
+    
+    return id;
+  };
+
+  const updateChecklistItem = (id: string, data: Partial<ChecklistItem>) => {
+    let permitId = '';
+    
+    setChecklistItems(prevItems =>
+      prevItems.map(item => {
+        if (item.id === id) {
+          permitId = item.permitId;
+          return { ...item, ...data };
+        }
+        return item;
+      })
+    );
+    
+    // Update permit progress if item was updated
+    if (permitId) {
+      const permitItems = checklistItems.filter(
+        item => item.permitId === permitId
+      );
+      const updatedItems = permitItems.map(item => 
+        item.id === id ? { ...item, ...data } : item
+      );
+      const progress = calculateProgress(updatedItems);
+      
+      updatePermit(permitId, { progress });
+    }
+  };
+
+  const deleteChecklistItem = (id: string) => {
+    const item = checklistItems.find(item => item.id === id);
+    if (!item) return;
+    
+    const permitId = item.permitId;
+    
+    setChecklistItems(prevItems => 
+      prevItems.filter(item => item.id !== id)
+    );
+    
+    // Update permit progress
+    const permitItems = checklistItems.filter(
+      i => i.permitId === permitId && i.id !== id
+    );
+    const progress = calculateProgress(permitItems);
+    
+    updatePermit(permitId, { progress });
+  };
+
+  const getPermitChecklistItems = (permitId: string) => {
+    return checklistItems.filter(item => item.permitId === permitId);
+  };
+
+  const getChecklistProgress = (permitId: string) => {
+    const permitItems = checklistItems.filter(item => item.permitId === permitId);
+    return calculateProgress(permitItems);
+  };
+
+  // Checklist template operations
+  const addChecklistTemplate = (templateData: Omit<ChecklistTemplate, 'id' | 'createdAt'>) => {
+    const id = generateId();
+    const newTemplate: ChecklistTemplate = {
+      ...templateData,
+      id,
+      createdAt: getTodayFormatted(),
+    };
+    setChecklistTemplates([...checklistTemplates, newTemplate]);
+    return id;
+  };
+
+  const updateChecklistTemplate = (id: string, data: Partial<ChecklistTemplate>) => {
+    setChecklistTemplates(prevTemplates =>
+      prevTemplates.map(template =>
+        template.id === id ? { ...template, ...data } : template
+      )
+    );
+  };
+
+  const deleteChecklistTemplate = (id: string) => {
+    setChecklistTemplates(prevTemplates => 
+      prevTemplates.filter(template => template.id !== id)
+    );
+  };
+
+  const getChecklistTemplateById = (id: string) => {
+    return checklistTemplates.find(template => template.id === id);
+  };
+
+  const applyTemplateToPermit = (templateId: string, permitId: string) => {
+    const template = checklistTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    
+    // Create checklist items for each template item
+    const newItems: ChecklistItem[] = [];
+    
+    template.items.forEach(item => {
+      const newItem: ChecklistItem = {
+        id: generateId(),
+        permitId,
+        title: item.title,
+        completed: false,
+        price: item.price,
+        createdAt: getTodayFormatted()
+      };
+      newItems.push(newItem);
+    });
+    
+    // Add the new items to the checklist
+    setChecklistItems(prevItems => [...prevItems, ...newItems]);
+    
+    // Update permit progress
+    const progress = calculateProgress(newItems);
+    updatePermit(permitId, { progress });
+  };
+
+  // Proposal operations
+  const getProposalById = (id: string) => {
+    return proposals.find(proposal => proposal.id === id);
+  };
+  
+  const getClientProposals = (clientId: string) => {
+    return proposals.filter(proposal => proposal.clientId === clientId);
+  };
+  
+  const getPermitProposals = (permitId: string) => {
+    return proposals.filter(proposal => proposal.permitId === permitId);
+  };
+  
+  const addProposal = (proposal: Proposal) => {
+    const newProposal = {
+      ...proposal,
+      id: proposal.id || generateId(),
+      createdAt: proposal.createdAt || getTodayFormatted()
+    };
+    setProposals(prev => [...prev, newProposal]);
+  };
+  
+  const updateProposal = (id: string, data: Partial<Proposal>) => {
+    setProposals(prevProposals =>
+      prevProposals.map(proposal =>
+        proposal.id === id ? { ...proposal, ...data } : proposal
+      )
+    );
+
+    // If the proposal status is changed to 'accepted', check if we should convert it to a permit
+    const updatedProposal = proposals.find(p => p.id === id);
+    if (updatedProposal && data.status === 'accepted' && updatedProposal.status !== 'accepted') {
+      convertProposalToPermit(id);
+    }
+  };
+  
+  const deleteProposal = (id: string) => {
+    setProposals(prevProposals => 
+      prevProposals.filter(proposal => proposal.id !== id)
+    );
+  };
+
+  // Convert an approved proposal to a permit
+  const convertProposalToPermit = (proposalId: string) => {
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) return;
+
+    // If the proposal already has a linked permit, just return that ID
+    if (proposal.permitId) {
+      return proposal.permitId;
+    }
+
+    // Find the client to get their branch information
+    const client = clients.find(c => c.id === proposal.clientId);
+    if (!client) return;
+
+    // Get client's branches to set a proper location
+    const branches = getClientBranches(client.id);
+    const mainBranch = branches.find(b => b.isMainLocation);
+    
+    // Use the main branch or first available branch for location
+    const branch = mainBranch || (branches.length > 0 ? branches[0] : null);
+    
+    // Create location string from branch data if available
+    let location = '';
+    if (branch) {
+      location = `${branch.name}, ${branch.address}, ${branch.city}, ${branch.state} ${branch.zipCode}`;
+    } else {
+      // Fallback to client address if no branches
+      location = `${client.name}, ${client.address}, ${client.city || ''}, ${client.state || ''} ${client.zipCode || ''}`;
+    }
+
+    // Determine permit type from proposal title or default to Commercial
+    let permitType = 'Commercial';
+    const typeMatches = {
+      'construction': 'Construction',
+      'renovation': 'Renovation',
+      'electrical': 'Electrical',
+      'plumbing': 'Plumbing',
+      'mechanical': 'Mechanical',
+      'demolition': 'Demolition',
+      'signage': 'Signage',
+      'installation': 'Installation'
+    };
+    
+    // Try to detect permit type from the proposal title
+    const titleLower = proposal.title.toLowerCase();
+    for (const [key, value] of Object.entries(typeMatches)) {
+      if (titleLower.includes(key)) {
+        permitType = value;
+        break;
+      }
+    }
+
+    // Generate a permit number
+    const permitNumber = generatePermitNumber();
+    
+    // Create a permit based on the proposal data
+    const newPermitData = {
+      title: proposal.title,
+      clientId: proposal.clientId,
+      permitType,
+      status: 'draft' as PermitStatus,
+      location,
+      description: proposal.scope,
+    };
+
+    // Add the permit
+    const permitId = addPermit(newPermitData);
+
+    // Create checklist items from proposal items
+    proposal.items.forEach(item => {
+      addChecklistItem({
+        permitId,
+        title: item.description,
+        completed: false,
+        price: item.unitPrice * item.quantity
+      });
+    });
+
+    // Update proposal to link it to the permit and mark as accepted
+    updateProposal(proposalId, { 
+      status: 'accepted',
+      permitId,
+      notes: (proposal.notes || '') + `\nConverted to Permit #${permitNumber} on ${getTodayFormatted()}`
+    });
+
+    // Return the new permit ID
+    return permitId;
+  };
+
+  // Invoice operations
+  const getInvoiceById = (id: string) => {
+    return invoices.find(invoice => invoice.id === id);
+  };
+  
+  const getClientInvoices = (clientId: string) => {
+    return invoices.filter(invoice => invoice.clientId === clientId);
+  };
+  
+  const getProposalInvoices = (proposalId: string) => {
+    return invoices.filter(invoice => invoice.proposalId === proposalId);
+  };
+  
+  const addInvoice = (invoice: Invoice) => {
+    const newInvoice = {
+      ...invoice,
+      id: invoice.id || generateInvoiceNumber(),
+      createdAt: invoice.createdAt || getTodayFormatted()
+    };
+    setInvoices(prev => [...prev, newInvoice]);
+  };
+  
+  const updateInvoice = (id: string, data: Partial<Invoice>) => {
+    setInvoices(prevInvoices =>
+      prevInvoices.map(invoice =>
+        invoice.id === id ? { ...invoice, ...data } : invoice
+      )
+    );
+  };
+  
+  const deleteInvoice = (id: string) => {
+    setInvoices(prevInvoices => 
+      prevInvoices.filter(invoice => invoice.id !== id)
+    );
+  };
+
+  // Convert an approved proposal to an invoice
+  const convertProposalToInvoice = (proposalId: string) => {
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) return;
+
+    // Check if invoice already exists for this proposal
+    const existingInvoice = invoices.find(inv => inv.proposalId === proposalId);
+    if (existingInvoice) {
+      return existingInvoice.id;
+    }
+
+    // Generate invoice number in format INV-YY-XXX
+    const invoiceNumber = generateInvoiceNumber();
+    
+    // Get current date and due date (30 days from now)
+    const now = new Date();
+    const dueDate = new Date();
+    dueDate.setDate(now.getDate() + 30);
+    
+    // Create invoice from proposal data
+    const newInvoice: Invoice = {
+      id: invoiceNumber,
+      proposalId: proposal.id,
+      permitId: proposal.permitId,
+      clientId: proposal.clientId,
+      status: 'draft',
+      date: now.toLocaleDateString(),
+      dueDate: dueDate.toLocaleDateString(),
+      items: proposal.items,
+      totalAmount: proposal.totalAmount,
+      paidAmount: 0,
+      balanceDue: proposal.totalAmount,
+      notes: `Invoice created from Proposal ${proposal.id}`,
+      createdAt: getTodayFormatted()
+    };
+
+    // Add the invoice
+    addInvoice(newInvoice);
+
+    // Return the new invoice ID
+    return invoiceNumber;
+  };
+
+  // Helper function to generate invoice number
+  function generateInvoiceNumber(): string {
+    const currentYear = new Date().getFullYear().toString().slice(-2);
+    let counter = 1;
+    
+    if (typeof window !== 'undefined') {
+      const storedYear = localStorage.getItem('invoiceYear');
+      const storedCounter = localStorage.getItem('invoiceCounter');
+      
+      // If the year changed, reset counter
+      if (storedYear !== currentYear) {
+        counter = 1;
+        localStorage.setItem('invoiceYear', currentYear);
+      } else if (storedCounter) {
+        // Otherwise use the stored counter + 1
+        counter = parseInt(storedCounter, 10) + 1;
+      } else {
+        counter = 1;
+      }
+      
+      // Store the updated counter
+      localStorage.setItem('invoiceCounter', counter.toString());
+    }
+    
+    // Format counter as 3-digit number with leading zeros
+    const counterFormatted = counter.toString().padStart(3, '0');
+    
+    // Return in format INV-YY-XXX
+    return `INV-${currentYear}-${counterFormatted}`;
+  }
+
+  // Dashboard operations
+  const getOpenPermits = () => {
+    // Get permits that are not approved or expired
+    return permits.filter(
+      permit => permit.status !== 'approved' && permit.status !== 'expired'
+    ).sort((a, b) => {
+      // Sort by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  };
+  
+  const getPermitProgress = (permitId: string) => {
+    const permit = permits.find(p => p.id === permitId);
+    return permit?.progress || 0;
+  };
+
+  // Permit numbering
+  const [nextPermitNumber, setNextPermitNumber] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const storedNumber = localStorage.getItem('nextPermitNumber');
+      return storedNumber ? parseInt(storedNumber, 10) : 1001;
+    }
+    return 1001;
+  });
+
+  const incrementPermitNumber = () => {
+    setNextPermitNumber(prev => {
+      const next = prev + 1;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nextPermitNumber', next.toString());
+      }
+      return next;
+    });
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        // Data
+        clients,
+        permits,
+        checklistItems,
+        clientBranches,
+        checklistTemplates,
+        proposals,
+        invoices,
+        
+        // Client operations
+        addClient,
+        updateClient,
+        deleteClient,
+        getClientById,
+        getClientPermits,
+        
+        // Client branch operations
+        addClientBranch,
+        updateClientBranch,
+        deleteClientBranch,
+        getClientBranches,
+        getClientBranchById,
+        
+        // Permit operations
+        addPermit,
+        updatePermit,
+        deletePermit,
+        getPermitById,
+        getPermitClient,
+        
+        // Checklist operations
+        addChecklistItem,
+        updateChecklistItem,
+        deleteChecklistItem,
+        getPermitChecklistItems,
+        getChecklistProgress,
+        
+        // Checklist template operations
+        addChecklistTemplate,
+        updateChecklistTemplate,
+        deleteChecklistTemplate,
+        getChecklistTemplateById,
+        applyTemplateToPermit,
+        
+        // Proposal operations
+        getProposalById,
+        getClientProposals,
+        getPermitProposals,
+        addProposal,
+        updateProposal,
+        deleteProposal,
+        convertProposalToPermit,
+        
+        // Invoice operations
+        getInvoiceById,
+        getClientInvoices,
+        getProposalInvoices,
+        addInvoice,
+        updateInvoice,
+        deleteInvoice,
+        convertProposalToInvoice,
+        
+        // Dashboard operations
+        getOpenPermits,
+        getPermitProgress,
+        
+        // Permit numbering
+        nextPermitNumber,
+        incrementPermitNumber,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+// Custom hook to use the context
+export function useAppContext() {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useAppContext must be used within an AppProvider');
+  }
+  return context;
+} 

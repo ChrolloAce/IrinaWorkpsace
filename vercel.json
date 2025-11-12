@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "installCommand": "npm install --legacy-peer-deps --force",
+  "framework": "nextjs",
+  "buildCommand": "SKIP_DEPENDENCY_CHECK=true npm run build",
+  "outputDirectory": ".next"
+} 
